@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -24,7 +24,10 @@ type Flow =
 export interface ActionsContextValue {
   /** Dispatch an alert action — navigation or a write flow. */
   perform: (action: AlertAction) => void;
+  /** Open the unit inside its building page (the demo's default). */
   openUnit: (unitId: ID, tab?: DrawerTab) => void;
+  /** Open the drawer over the current page — used by tables. */
+  openUnitHere: (unitId: ID, tab?: DrawerTab) => void;
   openTenant: (tenantId: ID) => void;
   openProperty: (propertyId: ID) => void;
   openContract: (contractId: ID) => void;
@@ -41,6 +44,7 @@ const ActionsContext = createContext<ActionsContextValue | null>(null);
 
 export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { store } = useStoreContext();
   const [flow, setFlow] = useState<Flow>(null);
   const closeFlow = useCallback(() => setFlow(null), []);
@@ -54,6 +58,17 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       router.push(`/properties/${unit.propertyId}?${params.toString()}`);
     },
     [router, store],
+  );
+
+  const openUnitHere = useCallback(
+    (unitId: ID, tab?: DrawerTab) => {
+      const params = new URLSearchParams(window.location.search);
+      params.set("unit", unitId);
+      if (tab && tab !== "tenant") params.set("tab", tab);
+      else params.delete("tab");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [router, pathname],
   );
 
   const openTenant = useCallback((tenantId: ID) => router.push(`/tenants/${tenantId}`), [router]);
@@ -120,8 +135,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument }),
-    [perform, openUnit, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument],
   );
 
   return (

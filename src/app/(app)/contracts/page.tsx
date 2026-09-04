@@ -1,7 +1,14 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { Suspense } from "react";
+
+import { PageSkeleton } from "@/components/common/states";
+import { ContractsPage } from "@/components/contracts/contracts-page";
 
 export const metadata = { title: "Contracts" };
 
 export default function Page() {
-  return <PlaceholderPage title="Contracts" description="Active, expiring and historical contracts." phase={7} />;
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <ContractsPage />
+    </Suspense>
+  );
 }

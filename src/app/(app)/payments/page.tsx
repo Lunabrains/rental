@@ -1,7 +1,14 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { Suspense } from "react";
+
+import { PageSkeleton } from "@/components/common/states";
+import { PaymentsPage } from "@/components/payments/payments-page";
 
 export const metadata = { title: "Payments" };
 
 export default function Page() {
-  return <PlaceholderPage title="Payments" description="Rent ledger across all buildings." phase={7} />;
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <PaymentsPage />
+    </Suspense>
+  );
 }

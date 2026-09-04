@@ -1,7 +1,14 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { Suspense } from "react";
+
+import { AlertsPage } from "@/components/alerts/alerts-page";
+import { PageSkeleton } from "@/components/common/states";
 
 export const metadata = { title: "Alerts" };
 
 export default function Page() {
-  return <PlaceholderPage title="Alerts" description="Everything that needs attention." phase={7} />;
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <AlertsPage />
+    </Suspense>
+  );
 }
