@@ -348,3 +348,121 @@ export function daysRemainingLabel(endDate: ISODate): string {
   if (d === 0) return "ends today";
   return `${d}d left`;
 }
+
+/* -------------------------------- Timeline -------------------------------- */
+
+export type TimelineTone = "default" | "success" | "warning" | "critical" | "info";
+
+export interface TimelineEvent {
+  id: string;
+  /** ISO date or datetime — sorted descending. */
+  at: string;
+  title: string;
+  detail: string | null;
+  tone: TimelineTone;
+  kind: "contract" | "payment" | "document" | "activity" | "unit";
+}
+
+/**
+ * A unit's story: contract starts/renewals/ends, every rent payment (late
+ * ones flagged), documents, and the activity log — newest first.
+ */
+export function getUnitTimeline(store: Store, unitId: ID, limit = 60): TimelineEvent[] {
+  const idx = indexStore(store);
+  const events: TimelineEvent[] = [];
+  const base = today();
+
+  for (const c of idx.contractsByUnit.get(unitId) ?? []) {
+    const name = idx.tenantById.get(c.tenantId)?.fullName ?? "Tenant";
+    const renewal = c.renewedFromContractId !== null;
+    if (c.startDate <= base) {
+      events.push({
+        id: `c-start-${c.id}`,
+        at: c.startDate,
+        title: renewal ? `Contract renewed — ${name}` : `${name} moved in`,
+        detail: `${c.contractNumber} · ${c.durationMonths} months · $${c.monthlyRent.toLocaleString("en-US")}/month`,
+        tone: "success",
+        kind: "contract",
+      });
+    }
+    const leftOn = c.moveOutDate ?? (c.status === "expired" || c.status === "terminated" || c.status === "renewed" ? c.endDate : null);
+    if (leftOn && leftOn <= base && c.status !== "renewed") {
+      events.push({
+        id: `c-end-${c.id}`,
+        at: leftOn,
+        title: c.status === "terminated" ? `${name} moved out (contract ended early)` : `${name} moved out`,
+        detail: `${c.contractNumber} ended`,
+        tone: "warning",
+        kind: "contract",
+      });
+    }
+    if (c.status === "notice_given" && c.moveOutDate) {
+      events.push({
+        id: `c-notice-${c.id}`,
+        at: c.createdAt,
+        title: `${name} gave notice`,
+        detail: `Moving out ${c.moveOutDate}`,
+        tone: "warning",
+        kind: "contract",
+      });
+    }
+  }
+
+  for (const p of store.payments) {
+    if (p.unitId !== unitId) continue;
+    const name = idx.tenantById.get(p.tenantId)?.fullName ?? "Tenant";
+    if (p.status === "paid" && p.paidDate) {
+      events.push({
+        id: `p-${p.id}`,
+        at: p.paidDate,
+        title: p.daysLate > 0 ? `Rent paid ${p.daysLate} days late — ${name}` : `Rent paid — ${name}`,
+        detail: `$${p.amountPaid.toLocaleString("en-US")} for ${p.periodMonth}${p.reference ? ` · ${p.reference}` : ""}`,
+        tone: p.daysLate > 3 ? "warning" : "default",
+        kind: "payment",
+      });
+    } else if (p.status === "partial" && p.paidDate) {
+      events.push({
+        id: `p-${p.id}`,
+        at: p.paidDate,
+        title: `Partial payment — ${name}`,
+        detail: `$${p.amountPaid.toLocaleString("en-US")} of $${p.amountDue.toLocaleString("en-US")} for ${p.periodMonth}`,
+        tone: "warning",
+        kind: "payment",
+      });
+    } else if (p.status === "overdue") {
+      events.push({
+        id: `p-${p.id}`,
+        at: p.dueDate,
+        title: `Rent overdue — ${name}`,
+        detail: `$${p.amountDue.toLocaleString("en-US")} for ${p.periodMonth} · ${p.daysLate} days late`,
+        tone: "critical",
+        kind: "payment",
+      });
+    }
+  }
+
+  for (const d of store.documents) {
+    const belongs = d.unitId === unitId || (d.tenantId && (idx.contractsByUnit.get(unitId) ?? []).some((c) => c.tenantId === d.tenantId));
+    if (!belongs) continue;
+    events.push({
+      id: `d-${d.id}`,
+      at: d.uploadedAt,
+      title: d.generated ? `Receipt generated — ${d.title}` : `Document added — ${d.title}`,
+      detail: d.fileName,
+      tone: "info",
+      kind: "document",
+    });
+  }
+
+  const tenantIds = new Set((idx.contractsByUnit.get(unitId) ?? []).map((c) => c.tenantId));
+  for (const a of store.activity) {
+    if (a.unitId === unitId || (a.tenantId && tenantIds.has(a.tenantId))) {
+      events.push({ id: `a-${a.id}`, at: a.at, title: a.message, detail: `by ${a.actor}`, tone: "info", kind: "activity" });
+    }
+  }
+
+  return events
+    .filter((e) => e.at.slice(0, 10) <= base)
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .slice(0, limit);
+}

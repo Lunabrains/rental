@@ -1,6 +1,15 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { Suspense } from "react";
+
+import { PageSkeleton } from "@/components/common/states";
+import { BuildingPage } from "@/components/properties/building-page";
+
+export const metadata = { title: "Building" };
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PlaceholderPage title={`Building ${id}`} description="Floor grid and unit drawer." phase={5} />;
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+      <BuildingPage propertyId={id} />
+    </Suspense>
+  );
 }
