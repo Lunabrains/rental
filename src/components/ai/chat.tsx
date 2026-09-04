@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { ArrowUp, Mic, MicOff, Sparkles, Square, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 
@@ -16,16 +16,55 @@ interface AssistantChatProps {
   className?: string;
 }
 
+/**
+ * Voice conversation: tap the mic once, talk, pause — the question is sent
+ * and answered aloud, then the mic opens again on its own. Say "stop" (or
+ * tap the mic while it is listening with nothing said) to end.
+ */
 export function AssistantChat({ compact, className }: AssistantChatProps) {
-  const { turns, ask, busy, status, contextLabel, speakReplies, setSpeakReplies, speaking, stopSpeaking, speakSupported } = useAssistant();
+  const { turns, ask, busy, status, contextLabel, speakReplies, setSpeakReplies, speaking, stopSpeaking, speakSupported, speechCompletedCount } = useAssistant();
   const [draft, setDraft] = useState("");
+  const [conversation, setConversation] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+  const noSpeechRef = useRef(0);
+  const manualStopRef = useRef(false);
+  const awaitingResumeRef = useRef(false);
+  const lastCompletedRef = useRef(speechCompletedCount);
+
   const voice = useVoice({
     onFinal: (text) => {
+      noSpeechRef.current = 0;
+      manualStopRef.current = false;
+      awaitingResumeRef.current = true;
       setDraft("");
       void ask(text, { spoken: true });
     },
+    onIdle: (reason) => {
+      if (reason === "end-phrase") {
+        setConversation(false);
+        toast("Okay — I'll stop listening.", { description: "Tap the mic whenever you want to talk again." });
+        return;
+      }
+      if (reason === "no-speech" && !manualStopRef.current) {
+        noSpeechRef.current += 1;
+        if (noSpeechRef.current >= 2) {
+          setConversation(false);
+          noSpeechRef.current = 0;
+          toast("I didn't hear anything.", { description: "Tap the mic when you're ready." });
+        } else {
+          // One quiet spell: keep the conversation open and listen again.
+          setTimeout(() => startRef.current(), 250);
+        }
+        return;
+      }
+      manualStopRef.current = false;
+      setConversation(false);
+    },
   });
+  const startRef = useRef(voice.start);
+  useEffect(() => {
+    startRef.current = voice.start;
+  }, [voice.start]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -35,25 +74,51 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
     if (voice.error) toast.error(voice.error);
   }, [voice.error]);
 
-  function submit(e: FormEvent) {
-    e.preventDefault();
-    const q = draft.trim();
-    if (!q || busy) return;
-    setDraft("");
-    void ask(q);
-  }
+  // After the assistant has spoken its answer, open the mic again.
+  useEffect(() => {
+    const completed = speechCompletedCount !== lastCompletedRef.current;
+    lastCompletedRef.current = speechCompletedCount;
+    if (!conversation || !awaitingResumeRef.current) return;
+    if (busy || speaking || voice.listening) return;
+    if (completed || !speakSupported) {
+      awaitingResumeRef.current = false;
+      startRef.current();
+    }
+  }, [speechCompletedCount, conversation, busy, speaking, voice.listening, speakSupported]);
 
-  function onMic() {
+  // Unmount / panel close: never leave the mic open.
+  const { cancel: cancelVoice } = voice;
+  useEffect(() => () => cancelVoice(), [cancelVoice]);
+
+  const onMic = useCallback(() => {
     if (!voice.supported) {
       toast.error("Voice input isn't supported in this browser — try Chrome or Edge.");
       return;
     }
+    if (voice.listening) {
+      manualStopRef.current = true;
+      voice.stop();
+      return;
+    }
     if (busy) return;
-    stopSpeaking();
-    voice.toggle();
+    if (speaking) stopSpeaking();
+    noSpeechRef.current = 0;
+    setConversation(true);
+    voice.start();
+  }, [voice, busy, speaking, stopSpeaking]);
+
+  function submit(e: FormEvent) {
+    e.preventDefault();
+    const q = draft.trim();
+    if (!q || busy) return;
+    if (voice.listening) voice.cancel();
+    setConversation(false);
+    setDraft("");
+    void ask(q);
   }
 
   const inputValue = voice.listening ? voice.interim : draft;
+  const showVoiceBanner = conversation && (voice.listening || speaking) && turns.length > 0;
 
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
@@ -88,9 +153,9 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
                   {voice.listening && <span className="absolute inset-0 animate-ping rounded-full bg-background/40" />}
                   {voice.listening ? <Square className="size-3.5 fill-current" /> : <Mic className="size-4" />}
                 </span>
-                {voice.listening ? "Listening… tap to stop" : "Tap to talk"}
+                {voice.listening ? "Listening… pause when you're done" : "Tap to talk"}
               </button>
-              {voice.listening && voice.interim && <p className="mt-2 text-sm italic text-muted-foreground">“{voice.interim}”</p>}
+              {voice.listening && <p className="mt-2 min-h-5 text-sm italic text-muted-foreground">{voice.interim ? `“${voice.interim}”` : "speak now"}</p>}
             </div>
           )}
 
@@ -127,7 +192,7 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
         </div>
       </div>
 
-      {turns.length > 0 && !busy && !turns[turns.length - 1]?.answer?.suggestions?.length && (
+      {turns.length > 0 && !busy && !showVoiceBanner && !turns[turns.length - 1]?.answer?.suggestions?.length && (
         <div className="no-scrollbar flex gap-1.5 overflow-x-auto border-t px-3 py-2">
           {SUGGESTED_QUESTIONS.slice(0, compact ? 3 : 6).map((q) => (
             <button key={q.id} type="button" onClick={() => void ask(q.text)} className="shrink-0 rounded-full border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground">
@@ -137,16 +202,26 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
         </div>
       )}
 
-      {voice.listening && turns.length > 0 && (
+      {showVoiceBanner && (
         <div className="flex items-center gap-2 border-t bg-brand-muted/60 px-3 py-2 text-xs">
           <span className="relative flex size-2.5">
             <span className="absolute inset-0 animate-ping rounded-full bg-brand/60" />
             <span className="relative size-2.5 rounded-full bg-brand" />
           </span>
-          <span className="font-medium text-foreground">Listening…</span>
-          <span className="truncate italic text-muted-foreground">{voice.interim || "speak now"}</span>
+          {voice.listening ? (
+            <>
+              <span className="font-medium text-foreground">Listening…</span>
+              <span className="truncate italic text-muted-foreground">{voice.interim || "speak now — pause when you're done, say “stop” to end"}</span>
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-foreground">Speaking…</span>
+              <span className="truncate text-muted-foreground">{"tap the mic to interrupt — I'll listen again when I finish"}</span>
+            </>
+          )}
         </div>
       )}
+
       <form onSubmit={submit} className={cn("flex items-center gap-2 border-t bg-card", compact ? "p-2" : "p-3")}>
         <Button
           type="button"
@@ -154,7 +229,7 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
           variant={voice.listening ? "default" : "outline"}
           onClick={onMic}
           disabled={busy}
-          aria-label={voice.listening ? "Stop listening" : "Ask by voice"}
+          aria-label={voice.listening ? "Finish and send" : speaking ? "Interrupt and talk" : "Ask by voice"}
           aria-pressed={voice.listening}
           className={cn(
             "relative shrink-0",

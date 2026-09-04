@@ -45,11 +45,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [speakReplies, setSpeakReplies] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [speechCompletedCount, setSpeechCompletedCount] = useState(0);
   const [speakSupported] = useState(() => speechSupported().speak);
   const storeRef = useRef(store);
   storeRef.current = store;
   const speakRepliesRef = useRef(speakReplies);
   speakRepliesRef.current = speakReplies;
+  // Distinguishes "the answer finished" from "the user hit Stop".
+  const stoppedByUserRef = useRef(false);
 
   useEffect(() => {
     warmVoices();
@@ -77,14 +80,22 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, store]);
 
   const stopSpeaking = useCallback(() => {
+    stoppedByUserRef.current = true;
     stopSynth();
     setSpeaking(false);
   }, []);
 
   const say = useCallback((answer: AssistantAnswer) => {
+    stoppedByUserRef.current = false;
     // `onstart` is unreliable in some engines; mark speaking as soon as the
     // utterance is queued and let onend/onerror (or Stop) clear it.
-    const ok = speak(spokenText(answer), { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
+    const ok = speak(spokenText(answer), {
+      onStart: () => setSpeaking(true),
+      onEnd: () => {
+        setSpeaking(false);
+        if (!stoppedByUserRef.current) setSpeechCompletedCount((n) => n + 1);
+      },
+    });
     setSpeaking(ok);
   }, []);
 
@@ -92,6 +103,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     async (question: string, opts: AskOptions = {}) => {
       const q = question.trim();
       if (!q || loadStatus.state !== "ready") return;
+      stoppedByUserRef.current = true;
       stopSynth();
       setSpeaking(false);
       const userTurn: ChatTurn = { id: nextId(), role: "user", text: q };
@@ -100,13 +112,17 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       setBusy(true);
       setStatus(null);
       try {
-        const answer = await askAssistant({
+        let answer = await askAssistant({
           question: q,
           history: turns,
           store: storeRef.current,
           context,
           onStatus: setStatus,
         });
+        if (opts.spoken && answer.source === "fallback") {
+          // Show the speaker what was actually heard, so a mis-transcription is obvious.
+          answer = { ...answer, text: `I heard “${q}”. ${answer.text}` };
+        }
         setTurns((t) => t.map((x) => (x.id === pendingId ? { id: pendingId, role: "assistant", answer } : x)));
         if (opts.spoken || speakRepliesRef.current) say(answer);
       } catch (err) {
@@ -120,6 +136,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   );
 
   const clear = useCallback(() => {
+    stoppedByUserRef.current = true;
     stopSynth();
     setSpeaking(false);
     setTurns([]);
@@ -128,6 +145,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const toggleSpeak = useCallback((on: boolean) => {
     setSpeakReplies(on);
     if (!on) {
+      stoppedByUserRef.current = true;
       stopSynth();
       setSpeaking(false);
     }
@@ -148,8 +166,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       speaking,
       stopSpeaking,
       speakSupported,
+      speechCompletedCount,
     }),
-    [turns, busy, status, context.propertyName, ask, clear, open, speakReplies, toggleSpeak, speaking, stopSpeaking, speakSupported],
+    [turns, busy, status, context.propertyName, ask, clear, open, speakReplies, toggleSpeak, speaking, stopSpeaking, speakSupported, speechCompletedCount],
   );
 
   const onAiPage = pathname === "/ai";

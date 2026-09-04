@@ -25,6 +25,11 @@ export interface AssistantContextValue {
   speaking: boolean;
   stopSpeaking: () => void;
   speakSupported: boolean;
+  /**
+   * Bumps every time a spoken answer finishes on its own (not when the user
+   * hit Stop) — lets the chat resume listening in a voice conversation.
+   */
+  speechCompletedCount: number;
 }
 
 export const AssistantContext = createContext<AssistantContextValue | null>(null);
