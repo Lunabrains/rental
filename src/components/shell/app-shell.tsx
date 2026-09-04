@@ -40,6 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Sidebar companyName={companyName} ownerName={ownerName} alertCount={criticalUnread} />
       <div className="lg:pl-60">
         <Topbar
+          companyName={companyName}
           ownerName={ownerName}
           criticalUnread={criticalUnread}
           bellAlerts={bellAlerts}

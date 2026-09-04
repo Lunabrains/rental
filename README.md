@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Rental Portfolio Command Center — demo
 
-## Getting Started
+A polished, fully connected demo of a multi-building rental management system, built to the
+"Rental Portfolio Command Center — Implementation Plan". Everything runs in the browser against an
+in-memory store loaded from an Excel seed, so the demo is self-contained and resets on reload.
 
-First, run the development server:
+## Run
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000. The seed workbook (`public/seed/portfolio.xlsx`) loads through the
+same importer the UI exposes; **Reset demo data** (Settings, or Settings → Import) reloads it.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### AI assistant
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The six rehearsed questions answer instantly from the query layer and need no key. Free-form
+questions call Claude with a read-only tool layer; to enable them:
 
-## Learn More
+```bash
+cp .env.example .env.local   # then set ANTHROPIC_API_KEY
+```
 
-To learn more about Next.js, take a look at the following resources:
+## The demo script (~6 minutes)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. **Dashboard** — greeting, Portfolio Intelligence, 4 KPIs, Karim Daher at the top of *Needs attention*, Marina Residence at the bottom of the ranking.
+2. **Properties** — 7 cards → open **Beirut Heights**.
+3. **Grid** — 27 red / 5 white squares with names; search "Karim" → 403 highlights.
+4. **Drawer** — Contract (ends in 28 days), Payments (current month overdue 8 days), Documents (open the ID and the contract).
+5. **Record Payment** — $1,500 → alert resolves, bell drops by one, dashboard outstanding drops by $1,500, receipt appears in Documents. Undo from the toast.
+6. **Alerts** — Michel Saab repeat late payer, B304 vacant 87 days, Marina below 75%, 8 contracts ending in 30 days → **Renew** one (Nadine Khoury gets +5%).
+7. **AI** — "What needs my attention today?" then "Which contracts should I worry about in the next 30 days?" — available on every page from the floating **Ask** button.
+8. **Import** — Settings → Import → drop `public/seed/cedar-residence.xlsx` (or click *Use the sample file*) → preview → 18 units → open Cedar Residence.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Seed data
 
-## Deploy on Vercel
+All dates in the seed are relative tokens (`today-8d`, `today+28d`) resolved at import time, so the
+story is the same on any calendar day. Regenerate the workbooks and check the numbers:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npx tsx scripts/generate-seed.ts   # writes public/seed/*.xlsx
+npx tsx scripts/check-seed.ts      # KPIs, alerts, idempotent re-import, Cedar import timing
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Architecture
+
+```
+src/types            entity model
+src/lib/data         in-memory store, indexes, StoreProvider (run(command) / reset())
+src/lib/import       xlsx template, parser, validation, idempotent apply, payment schedules
+src/lib/derived      recompute(): contract → payment → unit derivation, alert engine, intelligence brief
+src/lib/queries      read-only query layer (the only way screens and AI tools read data)
+src/lib/commands     the only write path; every command ends with recompute() and returns an undo
+src/lib/ai           tool definitions, scripted answers, client loop; src/app/api/ai relays to Claude
+src/components       shell, dashboard, properties/grid, unit drawer, flows (dialogs), pages
+```
+
+The query/command interface is deliberately narrow so a persistent backend can replace the
+in-memory store without touching the UI.
+
+## Scripts
+
+- `npm run dev` / `npm run build` / `npm run start`
+- `npm run lint`, `npx tsc --noEmit`
