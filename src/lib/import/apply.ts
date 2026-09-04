@@ -17,9 +17,11 @@ function reference(paymentId: string): string {
  * by default; `pattern` entries re-script individual payments relative to
  * today so the demo cast behaves the same on any calendar day.
  */
-export function generateSchedule(contract: Contract, pattern: PatternEntry[], base: ISODate): Payment[] {
+export function generateSchedule(contract: Contract, pattern: PatternEntry[], base: ISODate, assumePaid = true): Payment[] {
   // One payment per contract month, so a 12-month lease bills 12 times and a
   // renewal never double-bills the hand-over month. Early move-out truncates.
+  // `assumePaid` treats past due dates as settled (seed history); renewals and
+  // new tenants pass false so nothing is paid until it is recorded.
   const end =
     contract.moveOutDate && contract.moveOutDate < contract.endDate ? contract.moveOutDate : contract.endDate;
   const lastPeriod = periodOf(end);
@@ -30,7 +32,7 @@ export function generateSchedule(contract: Contract, pattern: PatternEntry[], ba
     let dueDate = dueDateFor(period, contract.paymentDay);
     if (dueDate < contract.startDate) dueDate = contract.startDate;
     const id = ids.payment(contract.id, period);
-    const paid = dueDate < base;
+    const paid = assumePaid && dueDate < base;
     payments.push({
       id,
       contractId: contract.id,

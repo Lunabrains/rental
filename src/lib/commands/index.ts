@@ -1,68 +1,23 @@
-import { ids } from "@/lib/data/ids";
-import { nowISO } from "@/lib/date";
-import { recompute } from "@/lib/derived/recompute";
 import { applyImport, summarize } from "@/lib/import/apply";
 import type { ImportPlan, ImportSummary } from "@/lib/import/types";
-import type { ActivityLog, AlertThresholds, ID, Store } from "@/types";
+import type { AlertThresholds } from "@/types";
 
-/**
- * Commands are the only write path. Each one is a pure function
- * `Store → { store, result }` that ends with `recompute()`, so alerts, KPIs
- * and derived statuses are always consistent with the data. The UI never
- * mutates state directly — it hands a command to the store provider.
- */
+import { finish, logActivity, type Command } from "./core";
 
-export interface CommandResult<T = void> {
-  store: Store;
-  result: T;
-  /** Reverse this command. Only offered for user-facing writes. */
-  undo?: (store: Store) => Store;
-}
-
-export type Command<T = void> = (store: Store) => CommandResult<T>;
-
-export const ACTOR = "George";
-
-let activitySeq = 0;
-
-type ActivityLinks = "propertyId" | "unitId" | "tenantId" | "contractId" | "paymentId";
-
-export type ActivityInput = Omit<ActivityLog, "id" | "at" | "actor" | ActivityLinks> & Partial<Pick<ActivityLog, ActivityLinks>>;
-
-export function logActivity(store: Store, entry: ActivityInput): Store {
-  const item: ActivityLog = {
-    id: ids.activity(activitySeq++),
-    at: nowISO(),
-    actor: ACTOR,
-    type: entry.type,
-    message: entry.message,
-    entityType: entry.entityType,
-    entityId: entry.entityId,
-    propertyId: entry.propertyId ?? null,
-    unitId: entry.unitId ?? null,
-    tenantId: entry.tenantId ?? null,
-    contractId: entry.contractId ?? null,
-    paymentId: entry.paymentId ?? null,
-  };
-  return { ...store, activity: [item, ...store.activity] };
-}
-
-export function finish<T>(store: Store, result: T, undo?: (store: Store) => Store): CommandResult<T> {
-  return { store: recompute(store), result, undo };
-}
+export * from "./core";
+export * from "./writes";
 
 /* -------------------------------- Import ---------------------------------- */
 
 export function importData(plan: ImportPlan): Command<ImportSummary> {
   return (store) => {
-    const { store: next, summary, createdContractIds } = applyImport(store, plan);
+    const { store: next, summary } = applyImport(store, plan);
     const withLog = logActivity(next, {
       type: "data_imported",
       message: `Imported ${plan.fileName}: ${summarize(summary)}`,
       entityType: "import",
       entityId: plan.fileName,
     });
-    void createdContractIds;
     return finish(withLog, summary);
   };
 }
@@ -117,5 +72,3 @@ export function stampReset(): Command {
       undefined,
     );
 }
-
-export type { ID };

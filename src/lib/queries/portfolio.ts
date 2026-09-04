@@ -161,11 +161,18 @@ function summarizeProperty(store: Store, property: Property, portfolioOutstandin
   const maintenance = units.length - rented - available;
   const occupancy = units.length > 0 ? rented / units.length : 0;
 
+  // Rent roll is date-aware: a renewal that starts next month counts from
+  // its start date, while the current contract keeps counting until then.
   let monthlyRevenue = 0;
   let expiring30 = 0;
+  const seenUnits = new Set<ID>();
   for (const c of store.contracts) {
-    if (c.propertyId !== property.id || !isOccupying(c)) continue;
-    monthlyRevenue += c.monthlyRent;
+    if (c.propertyId !== property.id) continue;
+    if (occupyingAt(c, base) && !seenUnits.has(c.unitId)) {
+      seenUnits.add(c.unitId);
+      monthlyRevenue += c.monthlyRent;
+    }
+    if (!isOccupying(c)) continue;
     const d = -daysSince(c.endDate);
     if (d >= 0 && d <= 30) expiring30++;
   }

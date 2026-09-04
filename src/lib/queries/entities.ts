@@ -120,8 +120,12 @@ export function getUnitDetails(store: Store, unitId: ID): UnitDetails | null {
   const cell = buildCell(store, unit);
   const contract = cell.contract;
   const tenant = cell.tenant;
+  // The ledger follows the tenant in this unit across renewals, so a renewed
+  // contract's last month and the new one's first month sit in one list.
   const payments = contract
-    ? (idx.paymentsByContract.get(contract.id) ?? []).slice().sort((a, b) => (a.dueDate < b.dueDate ? 1 : -1))
+    ? (idx.paymentsByTenant.get(contract.tenantId) ?? [])
+        .filter((p) => p.unitId === unit.id)
+        .sort((a, b) => (a.dueDate < b.dueDate ? 1 : -1))
     : [];
   const documents = tenant
     ? (idx.documentsByTenant.get(tenant.id) ?? []).filter((d) => !d.contractId || d.contractId === contract?.id || d.unitId === unit.id)

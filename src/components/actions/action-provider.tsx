@@ -1,14 +1,25 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { AddTenantDialog } from "@/components/flows/add-tenant-dialog";
+import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
+import { RecordPaymentDialog } from "@/components/flows/record-payment-dialog";
+import { RenewContractDialog } from "@/components/flows/renew-contract-dialog";
 import { indexStore } from "@/lib/data/store";
 import { useStoreContext } from "@/lib/data/store-context";
 import type { AlertAction, ID } from "@/types";
 
 export type DrawerTab = "tenant" | "contract" | "payments" | "documents" | "activity";
+
+type Flow =
+  | { kind: "record_payment"; paymentId: ID }
+  | { kind: "renew"; contractId: ID }
+  | { kind: "leaving"; contractId: ID }
+  | { kind: "add_tenant"; unitId: ID }
+  | null;
 
 export interface ActionsContextValue {
   /** Dispatch an alert action — navigation or a write flow. */
@@ -17,7 +28,7 @@ export interface ActionsContextValue {
   openTenant: (tenantId: ID) => void;
   openProperty: (propertyId: ID) => void;
   openContract: (contractId: ID) => void;
-  /** Write flows — wired to dialogs in Phase 6; navigate to the ledger until then. */
+  /** Write flows — open the corresponding dialog. */
   recordPayment: (paymentId: ID) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
@@ -31,6 +42,8 @@ const ActionsContext = createContext<ActionsContextValue | null>(null);
 export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { store } = useStoreContext();
+  const [flow, setFlow] = useState<Flow>(null);
+  const closeFlow = useCallback(() => setFlow(null), []);
 
   const openUnit = useCallback(
     (unitId: ID, tab?: DrawerTab) => {
@@ -54,17 +67,10 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
     [openUnit, store],
   );
 
-  const recordPayment = useCallback(
-    (paymentId: ID) => {
-      const p = indexStore(store).paymentById.get(paymentId);
-      if (p) openUnit(p.unitId, "payments");
-    },
-    [openUnit, store],
-  );
-
-  const renewContract = useCallback((contractId: ID) => openContract(contractId), [openContract]);
-  const markAsLeaving = useCallback((contractId: ID) => openContract(contractId), [openContract]);
-  const addTenant = useCallback((unitId: ID) => openUnit(unitId), [openUnit]);
+  const recordPayment = useCallback((paymentId: ID) => setFlow({ kind: "record_payment", paymentId }), []);
+  const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
+  const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
+  const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
 
   const sendReminder = useCallback(
     (tenantId: ID) => {
@@ -118,7 +124,15 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
     [perform, openUnit, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument],
   );
 
-  return <ActionsContext.Provider value={value}>{children}</ActionsContext.Provider>;
+  return (
+    <ActionsContext.Provider value={value}>
+      {children}
+      {flow?.kind === "record_payment" && <RecordPaymentDialog key={flow.paymentId} paymentId={flow.paymentId} onClose={closeFlow} />}
+      {flow?.kind === "renew" && <RenewContractDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
+      {flow?.kind === "leaving" && <MarkLeavingDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
+      {flow?.kind === "add_tenant" && <AddTenantDialog key={flow.unitId} unitId={flow.unitId} onClose={closeFlow} />}
+    </ActionsContext.Provider>
+  );
 }
 
 export function useActions(): ActionsContextValue {
