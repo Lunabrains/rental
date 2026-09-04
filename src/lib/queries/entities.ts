@@ -285,7 +285,8 @@ export function contractRow(store: Store, contract: Contract): ContractRow | nul
     tenant,
     outstanding: totals.outstanding,
     hasOverdue: payments.some((p) => p.status === "overdue" || p.status === "partial"),
-    reliable: totals.lateCount === 0 && payments.filter((p) => p.status === "paid").length >= 3,
+    // Reliable = a full year of rent, never a day late.
+    reliable: totals.lateCount === 0 && payments.filter((p) => p.status === "paid").length >= 12,
     lateCount: totals.lateCount,
   };
 }

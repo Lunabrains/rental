@@ -339,6 +339,10 @@ function generateBuilding(b: BuildingSpec, opts: { cast: boolean; history: boole
     } else if (dipLeft > 0 && chance(0.7)) {
       dipLeft--;
       patterns.push(`late@-${between(55, 70)}:${between(26, 34)}`);
+    } else if (opts.history && expiringUnits.has(u.number)) {
+      // Everyone else expiring soon has slipped once, so Nadine is the one
+      // spotless renewal on the list.
+      patterns.push(`late@-${between(120, 330)}:${between(2, 5)}`);
     } else if (opts.history && chance(0.18)) {
       patterns.push(`late@-${between(95, 300)}:${between(2, 6)}`);
     }

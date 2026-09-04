@@ -1,7 +1,7 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
 
 export const metadata = { title: "Dashboard" };
 
 export default function Page() {
-  return <PlaceholderPage title="Dashboard" description="Portfolio at a glance." phase={4} />;
+  return <DashboardPage />;
 }

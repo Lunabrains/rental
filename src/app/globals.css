@@ -133,9 +133,9 @@
   --unit-rented-foreground: oklch(0.995 0.004 25);
   --grid-panel: oklch(0.924 0.003 286);
 
-  /* Charts: brand red leads, neutrals follow */
+  /* Charts: brand red leads, blue second (pair validated for CVD), neutrals follow */
   --chart-1: oklch(0.559 0.208 26.5);
-  --chart-2: oklch(0.42 0.008 286);
+  --chart-2: oklch(0.558 0.146 251);
   --chart-3: oklch(0.63 0.008 286);
   --chart-4: oklch(0.78 0.005 286);
   --chart-5: oklch(0.678 0.152 62);

@@ -250,7 +250,7 @@ export function getSinceLastLogin(store: Store, windowDays = 2, base: ISODate = 
   const from = addDaysISO(base, -windowDays);
   const received = store.payments.filter((p) => p.paidDate !== null && p.paidDate > from && p.paidDate <= base);
   const vacated = store.units.filter((u) => u.status === "available" && u.availableSince !== null && u.availableSince > from);
-  const newAlerts = store.alerts.filter((a) => !a.dismissed && !a.read && a.severity !== "info").length;
+  const newAlerts = store.alerts.filter((a) => !a.dismissed && !a.read && a.severity === "critical").length;
   return {
     paymentsReceived: received.length,
     paymentsAmount: received.reduce((n, p) => n + p.amountPaid, 0),
