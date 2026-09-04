@@ -1,6 +1,8 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { TenantPage } from "@/components/tenants/tenant-page";
+
+export const metadata = { title: "Tenant" };
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <PlaceholderPage title={`Tenant ${id}`} description="Full tenant profile." phase={9} />;
+  return <TenantPage tenantId={decodeURIComponent(id)} />;
 }

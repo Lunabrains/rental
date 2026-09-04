@@ -1,7 +1,7 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { ReportsPage } from "@/components/reports/reports-page";
 
 export const metadata = { title: "Reports" };
 
 export default function Page() {
-  return <PlaceholderPage title="Reports" description="Rent roll and portfolio reports." phase={9} />;
+  return <ReportsPage />;
 }

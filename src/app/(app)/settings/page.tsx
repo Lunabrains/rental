@@ -1,7 +1,7 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { SettingsPage } from "@/components/settings/settings-page";
 
 export const metadata = { title: "Settings" };
 
 export default function Page() {
-  return <PlaceholderPage title="Settings" description="Company, thresholds and demo data." phase={9} />;
+  return <SettingsPage />;
 }

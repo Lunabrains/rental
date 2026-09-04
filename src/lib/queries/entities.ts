@@ -470,3 +470,34 @@ export function getUnitTimeline(store: Store, unitId: ID, limit = 60): TimelineE
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
     .slice(0, limit);
 }
+
+/** A tenant's story across every unit they have rented — newest first. */
+export function getTenantTimeline(store: Store, tenantId: ID, limit = 80): TimelineEvent[] {
+  const idx = indexStore(store);
+  const tenant = idx.tenantById.get(tenantId);
+  if (!tenant) return [];
+  const unitIds = new Set((idx.contractsByTenant.get(tenantId) ?? []).map((c) => c.unitId));
+  const seen = new Set<string>();
+  const events: TimelineEvent[] = [];
+  for (const unitId of unitIds) {
+    for (const e of getUnitTimeline(store, unitId, 500)) {
+      // Keep only events that belong to this tenant (payments, contracts,
+      // documents and activity all mention them or are keyed to them).
+      const mine =
+        e.kind === "activity"
+          ? store.activity.some((a) => `a-${a.id}` === e.id && a.tenantId === tenantId)
+          : e.kind === "payment"
+            ? store.payments.some((p) => `p-${p.id}` === e.id && p.tenantId === tenantId)
+            : e.kind === "contract"
+              ? store.contracts.some((c) => (`c-start-${c.id}` === e.id || `c-end-${c.id}` === e.id || `c-notice-${c.id}` === e.id) && c.tenantId === tenantId)
+              : e.kind === "document"
+                ? store.documents.some((d) => `d-${d.id}` === e.id && d.tenantId === tenantId)
+                : false;
+      if (mine && !seen.has(e.id)) {
+        seen.add(e.id);
+        events.push(e);
+      }
+    }
+  }
+  return events.sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0)).slice(0, limit);
+}
