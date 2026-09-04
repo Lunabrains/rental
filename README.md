@@ -21,8 +21,17 @@ answers questions about payments, contracts, buildings, units, tenants, vacancie
 and recent activity straight from the query layer — instantly, with the same numbers as the
 screens. It is available on every page from the floating **Ask** button and on `/ai`.
 
-**Voice:** tap the mic and speak — the browser's Web Speech API transcribes the question (Chrome /
-Edge); the speaker toggle reads answers back. No keys or services involved.
+**Voice:** tap the mic and talk — the browser's Web Speech API (Chrome / Edge) listens until you
+pause, answers aloud, then listens again so the conversation keeps going; say "stop" (or "خلص") to
+end it. The speaker toggle reads typed answers aloud too. No keys or services involved.
+
+**Arabic:** flip the **EN / عربي** toggle next to the mic. Questions are recognised in Lebanese /
+standard Arabic (`ar-LB`), understood by the same local router through an Arabic lexicon
+(`src/lib/ai/arabic.ts`, with phonetic matching for tenant names), and answered in Arabic on screen
+and aloud (`src/lib/ai/i18n.ts` holds every answer template in both languages). Typed Arabic works
+without the toggle. Spoken Arabic answers need an Arabic voice in the browser — Microsoft Edge ships
+them; Chrome uses the voices installed in Windows (Settings → Time & Language → Language & region →
+add Arabic with Text-to-speech). Without one the answer stays on screen and the assistant says so.
 
 Optional: with `ANTHROPIC_API_KEY` in `.env.local` (see `.env.example`), questions the local
 router cannot place fall through to Claude with a read-only tool layer. Without a key they get an

@@ -13,6 +13,22 @@ export function normalizeQuestion(q: string): string {
     .replace(/[’']s\b/g, "")
     .replace(/[’']/g, "")
     .replace(/[^a-z0-9\s]/g, " ")
+    // Casual shorthand owners actually type.
+    .replace(/\bwks\b/g, "weeks")
+    .replace(/\bwk\b/g, "week")
+    .replace(/\b(tmrw|tmr|tmw|2moro|tomorow)\b/g, "tomorrow")
+    .replace(/\bmos\b/g, "months")
+    .replace(/\byrs?\b/g, "year")
+    .replace(/\bapts?\b/g, "units")
+    .replace(/\bbldg\b/g, "building")
+    .replace(/\bpmts?\b/g, "payments")
+    .replace(/\bu\b/g, "you")
+    .replace(/\br\b/g, "are")
+    .replace(/\bwat\b/g, "what")
+    .replace(/\bwats\b/g, "what is")
+    .replace(/\bwhos\b/g, "who is")
+    .replace(/\bwhats\b/g, "what is")
+    .replace(/\bhows\b/g, "how is")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -46,13 +62,13 @@ export function findProperty(store: Store, normalizedQuestion: string): Property
   return best;
 }
 
-/** "704" matches unit 704 and B704; "b304" matches B304 only. */
+/** "704" matches unit 704 and B704; a typed letter prefix ("b304") is literal and matches B304 only. */
 export function findUnits(store: Store, unitToken: string, property: Property | null): Unit[] {
   const token = unitToken.toLowerCase();
-  const digits = token.replace(/^[a-z]+/, "");
-  const exact = store.units.filter((u) => u.unitNumber.toLowerCase() === token && (!property || u.propertyId === property.id));
-  if (exact.length > 0) return exact;
-  return store.units.filter((u) => u.unitNumber.toLowerCase().replace(/^[a-z]+/, "") === digits && (!property || u.propertyId === property.id));
+  const inScope = (u: Unit) => !property || u.propertyId === property.id;
+  const exact = store.units.filter((u) => u.unitNumber.toLowerCase() === token && inScope(u));
+  if (exact.length > 0 || /^[a-z]/.test(token)) return exact;
+  return store.units.filter((u) => u.unitNumber.toLowerCase().replace(/^[a-z]+/, "") === token && inScope(u));
 }
 
 export function propertyNameFor(store: Store, propertyId: string | undefined): string | undefined {

@@ -1,5 +1,7 @@
 import type { AlertActionKind, ID } from "@/types";
 
+import type { Lang } from "./i18n";
+
 /** What the assistant knows about where the user is. */
 export interface PageContext {
   pathname: string;
@@ -35,6 +37,8 @@ export interface AssistantAnswer {
   actions?: AnswerAction[];
   /** Follow-up questions the user can tap. */
   suggestions?: string[];
+  /** Language the answer is written in — drives text direction and the voice. */
+  lang?: Lang;
   source: "scripted" | "local" | "model" | "fallback";
 }
 

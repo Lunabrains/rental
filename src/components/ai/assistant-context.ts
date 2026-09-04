@@ -2,11 +2,14 @@
 
 import { createContext, useContext } from "react";
 
+import type { Lang } from "@/lib/ai/i18n";
 import type { ChatTurn } from "@/lib/ai/types";
 
 export interface AskOptions {
   /** The question was spoken — read the answer back. */
   spoken?: boolean;
+  /** Force the answer language; otherwise detected from the question's script. */
+  lang?: Lang;
 }
 
 export interface AssistantContextValue {
@@ -30,6 +33,9 @@ export interface AssistantContextValue {
    * hit Stop) — lets the chat resume listening in a voice conversation.
    */
   speechCompletedCount: number;
+  /** Language the microphone listens in (and the UI hints). Typed questions auto-detect. */
+  voiceLang: Lang;
+  setVoiceLang: (lang: Lang) => void;
 }
 
 export const AssistantContext = createContext<AssistantContextValue | null>(null);

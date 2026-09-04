@@ -8,7 +8,8 @@ import { AnswerView } from "@/components/ai/answer-view";
 import { useAssistant } from "@/components/ai/assistant-context";
 import { useVoice } from "@/components/ai/use-voice";
 import { Button } from "@/components/ui/button";
-import { SUGGESTED_QUESTIONS } from "@/lib/ai/scripted";
+import { strings, type Lang } from "@/lib/ai/i18n";
+import { suggestedQuestions } from "@/lib/ai/scripted";
 import { cn } from "@/lib/utils";
 
 interface AssistantChatProps {
@@ -16,13 +17,16 @@ interface AssistantChatProps {
   className?: string;
 }
 
+const RECOGNITION_LANG: Record<Lang, string> = { en: "en-US", ar: "ar-LB" };
+
 /**
- * Voice conversation: tap the mic once, talk, pause — the question is sent
- * and answered aloud, then the mic opens again on its own. Say "stop" (or
- * tap the mic while it is listening with nothing said) to end.
+ * Voice conversation: tap the mic once, talk (English or Arabic — pick the
+ * language next to the mic), pause — the question is sent and answered aloud
+ * in the same language, then the mic opens again on its own. Say "stop" /
+ * «وقف» or tap the mic to end.
  */
 export function AssistantChat({ compact, className }: AssistantChatProps) {
-  const { turns, ask, busy, status, contextLabel, speakReplies, setSpeakReplies, speaking, stopSpeaking, speakSupported, speechCompletedCount } = useAssistant();
+  const { turns, ask, busy, status, contextLabel, speakReplies, setSpeakReplies, speaking, stopSpeaking, speakSupported, speechCompletedCount, voiceLang, setVoiceLang } = useAssistant();
   const [draft, setDraft] = useState("");
   const [conversation, setConversation] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -30,8 +34,12 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
   const manualStopRef = useRef(false);
   const awaitingResumeRef = useRef(false);
   const lastCompletedRef = useRef(speechCompletedCount);
+  const ui = strings(voiceLang).ui;
+  const suggestions = suggestedQuestions(voiceLang);
+  const dir = voiceLang === "ar" ? "rtl" : "ltr";
 
   const voice = useVoice({
+    lang: RECOGNITION_LANG[voiceLang],
     onFinal: (text) => {
       noSpeechRef.current = 0;
       manualStopRef.current = false;
@@ -42,7 +50,7 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
     onIdle: (reason) => {
       if (reason === "end-phrase") {
         setConversation(false);
-        toast("Okay — I'll stop listening.", { description: "Tap the mic whenever you want to talk again." });
+        toast(voiceLang === "ar" ? "تمام — توقفت عن الاستماع." : "Okay — I'll stop listening.", { description: voiceLang === "ar" ? "اضغط الميكروفون عندما تريد التحدث مجدداً." : "Tap the mic whenever you want to talk again." });
         return;
       }
       if (reason === "no-speech" && !manualStopRef.current) {
@@ -50,7 +58,7 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
         if (noSpeechRef.current >= 2) {
           setConversation(false);
           noSpeechRef.current = 0;
-          toast("I didn't hear anything.", { description: "Tap the mic when you're ready." });
+          toast(voiceLang === "ar" ? "لم أسمع شيئاً." : "I didn't hear anything.", { description: voiceLang === "ar" ? "اضغط الميكروفون عندما تكون جاهزاً." : "Tap the mic when you're ready." });
         } else {
           // One quiet spell: keep the conversation open and listen again.
           setTimeout(() => startRef.current(), 250);
@@ -92,7 +100,7 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
 
   const onMic = useCallback(() => {
     if (!voice.supported) {
-      toast.error("Voice input isn't supported in this browser — try Chrome or Edge.");
+      toast.error(voiceLang === "ar" ? "الإدخال الصوتي غير مدعوم في هذا المتصفح — جرّب Chrome أو Edge." : "Voice input isn't supported in this browser — try Chrome or Edge.");
       return;
     }
     if (voice.listening) {
@@ -105,7 +113,14 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
     noSpeechRef.current = 0;
     setConversation(true);
     voice.start();
-  }, [voice, busy, speaking, stopSpeaking]);
+  }, [voice, busy, speaking, stopSpeaking, voiceLang]);
+
+  function switchLang(lang: Lang) {
+    if (lang === voiceLang) return;
+    if (voice.listening) voice.cancel();
+    setConversation(false);
+    setVoiceLang(lang);
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -120,49 +135,73 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
   const inputValue = voice.listening ? voice.interim : draft;
   const showVoiceBanner = conversation && (voice.listening || speaking) && turns.length > 0;
 
+  const langToggle = (
+    <div className="flex rounded-md border bg-card p-0.5 text-[11px]" role="radiogroup" aria-label="Voice language">
+      {(["en", "ar"] as Lang[]).map((l) => (
+        <button
+          key={l}
+          type="button"
+          role="radio"
+          aria-checked={voiceLang === l}
+          onClick={() => switchLang(l)}
+          className={cn("rounded px-2 py-1 font-medium transition-colors", voiceLang === l ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+        >
+          {l === "en" ? "EN" : "عربي"}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <div className={cn("flex min-h-0 flex-1 flex-col", className)}>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className={cn("space-y-4", compact ? "p-3" : "p-4")}>
           {turns.length === 0 && (
-            <div className={cn("text-center", compact ? "py-6" : "py-12")}>
+            <div className={cn("text-center", compact ? "py-6" : "py-12")} dir={dir}>
               <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-brand-muted text-brand">
                 <Sparkles className="size-5" />
               </span>
-              <p className="mt-3 text-sm font-medium">Ask about anything in the portfolio</p>
+              <p className="mt-3 text-sm font-medium">{voiceLang === "ar" ? "اسأل عن أي شيء في المحفظة" : "Ask about anything in the portfolio"}</p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Payments, contracts, buildings, tenants, what changed — {contextLabel ? `scoped to ${contextLabel}` : "across every building"}. Type, or tap the mic and just talk.
+                {voiceLang === "ar"
+                  ? `الدفعات، العقود، المباني، المستأجرون، ما تغيّر — ${contextLabel ? `ضمن ${contextLabel}` : "في كل المباني"}. اكتب، أو اضغط الميكروفون وتكلم بالعربي.`
+                  : `Payments, contracts, buildings, tenants, what changed — ${contextLabel ? `scoped to ${contextLabel}` : "across every building"}. Type, or tap the mic and just talk.`}
               </p>
               <div className={cn("mt-4 grid gap-1.5", compact ? "grid-cols-1" : "mx-auto max-w-2xl sm:grid-cols-2")}>
-                {SUGGESTED_QUESTIONS.map((q) => (
-                  <button key={q.id} type="button" onClick={() => void ask(q.text)} className="rounded-md border bg-card px-3 py-2 text-left text-xs hover:bg-accent">
+                {suggestions.map((q) => (
+                  <button key={q.id} type="button" onClick={() => void ask(q.text, { lang: voiceLang })} className="rounded-md border bg-card px-3 py-2 text-start text-xs hover:bg-accent">
                     {q.text}
                   </button>
                 ))}
               </div>
-              <button
-                type="button"
-                onClick={onMic}
-                disabled={busy}
-                className={cn(
-                  "mx-auto mt-5 flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-medium shadow-md transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
-                  voice.listening ? "bg-foreground text-background" : "bg-brand text-brand-foreground",
-                )}
-              >
-                <span className="relative flex size-6 items-center justify-center">
-                  {voice.listening && <span className="absolute inset-0 animate-ping rounded-full bg-background/40" />}
-                  {voice.listening ? <Square className="size-3.5 fill-current" /> : <Mic className="size-4" />}
-                </span>
-                {voice.listening ? "Listening… pause when you're done" : "Tap to talk"}
-              </button>
-              {voice.listening && <p className="mt-2 min-h-5 text-sm italic text-muted-foreground">{voice.interim ? `“${voice.interim}”` : "speak now"}</p>}
+              <div className="mt-5 flex items-center justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={onMic}
+                  disabled={busy}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-full px-5 py-2.5 text-sm font-medium shadow-md transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
+                    voice.listening ? "bg-foreground text-background" : "bg-brand text-brand-foreground",
+                  )}
+                >
+                  <span className="relative flex size-6 items-center justify-center">
+                    {voice.listening && <span className="absolute inset-0 animate-ping rounded-full bg-background/40" />}
+                    {voice.listening ? <Square className="size-3.5 fill-current" /> : <Mic className="size-4" />}
+                  </span>
+                  {voice.listening ? ui.listeningPause : ui.tapToTalk}
+                </button>
+                {langToggle}
+              </div>
+              {voice.listening && <p className="mt-2 min-h-5 text-sm italic text-muted-foreground">{voice.interim ? `“${voice.interim}”` : voiceLang === "ar" ? "تكلم الآن" : "speak now"}</p>}
             </div>
           )}
 
           {turns.map((t) =>
             t.role === "user" ? (
               <div key={t.id} className="flex justify-end">
-                <div className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">{t.text}</div>
+                <div dir="auto" className="max-w-[85%] rounded-2xl rounded-br-sm bg-primary px-3.5 py-2 text-sm text-primary-foreground">
+                  {t.text}
+                </div>
               </div>
             ) : (
               <div key={t.id} className="flex gap-2.5">
@@ -177,7 +216,7 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
                         <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
                         <span className="size-1.5 animate-bounce rounded-full bg-muted-foreground" />
                       </span>
-                      {status ?? "Thinking…"}
+                      {status ?? (voiceLang === "ar" ? "أفكر…" : "Thinking…")}
                     </div>
                   ) : t.error ? (
                     <p className="text-sm text-critical">{t.error}</p>
@@ -193,9 +232,9 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
       </div>
 
       {turns.length > 0 && !busy && !showVoiceBanner && !turns[turns.length - 1]?.answer?.suggestions?.length && (
-        <div className="no-scrollbar flex gap-1.5 overflow-x-auto border-t px-3 py-2">
-          {SUGGESTED_QUESTIONS.slice(0, compact ? 3 : 6).map((q) => (
-            <button key={q.id} type="button" onClick={() => void ask(q.text)} className="shrink-0 rounded-full border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground">
+        <div className="no-scrollbar flex gap-1.5 overflow-x-auto border-t px-3 py-2" dir={dir}>
+          {suggestions.slice(0, compact ? 3 : 6).map((q) => (
+            <button key={q.id} type="button" onClick={() => void ask(q.text, { lang: voiceLang })} className="shrink-0 rounded-full border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground">
               {q.text}
             </button>
           ))}
@@ -203,20 +242,20 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
       )}
 
       {showVoiceBanner && (
-        <div className="flex items-center gap-2 border-t bg-brand-muted/60 px-3 py-2 text-xs">
+        <div className="flex items-center gap-2 border-t bg-brand-muted/60 px-3 py-2 text-xs" dir={dir}>
           <span className="relative flex size-2.5">
             <span className="absolute inset-0 animate-ping rounded-full bg-brand/60" />
             <span className="relative size-2.5 rounded-full bg-brand" />
           </span>
           {voice.listening ? (
             <>
-              <span className="font-medium text-foreground">Listening…</span>
-              <span className="truncate italic text-muted-foreground">{voice.interim || "speak now — pause when you're done, say “stop” to end"}</span>
+              <span className="font-medium text-foreground">{ui.listening}</span>
+              <span className="truncate italic text-muted-foreground">{voice.interim || ui.speakNow}</span>
             </>
           ) : (
             <>
-              <span className="font-medium text-foreground">Speaking…</span>
-              <span className="truncate text-muted-foreground">{"tap the mic to interrupt — I'll listen again when I finish"}</span>
+              <span className="font-medium text-foreground">{ui.speaking}</span>
+              <span className="truncate text-muted-foreground">{ui.interrupt}</span>
             </>
           )}
         </div>
@@ -235,16 +274,18 @@ export function AssistantChat({ compact, className }: AssistantChatProps) {
             "relative shrink-0",
             voice.listening ? "bg-brand text-brand-foreground hover:bg-brand/90" : voice.supported ? "border-brand/50 text-brand hover:bg-brand-muted" : "text-muted-foreground",
           )}
-          title={voice.supported ? "Ask by voice — tap and talk" : "Voice input not supported here"}
+          title={voice.supported ? (voiceLang === "ar" ? "اسأل بالصوت — اضغط وتكلم" : "Ask by voice — tap and talk") : "Voice input not supported here"}
         >
           {voice.listening ? <Square className="size-3.5 fill-current" /> : voice.supported ? <Mic className="size-4" /> : <MicOff className="size-4" />}
           {voice.listening && <span className="absolute inset-0 -z-10 animate-ping rounded-md bg-brand/50" />}
         </Button>
+        {turns.length > 0 && langToggle}
         <input
           value={inputValue}
           onChange={(e) => setDraft(e.target.value)}
           readOnly={voice.listening}
-          placeholder={voice.listening ? "Listening… speak now" : contextLabel ? `Ask about ${contextLabel}…` : "Ask anything about the portfolio…"}
+          dir="auto"
+          placeholder={voice.listening ? ui.placeholderListening : contextLabel ? ui.placeholderScoped(contextLabel) : ui.placeholder}
           aria-label="Ask the assistant"
           disabled={busy}
           className={cn(

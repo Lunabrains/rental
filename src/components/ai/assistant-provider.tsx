@@ -4,12 +4,14 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Maximize2, Sparkles, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 import { AssistantContext, type AskOptions, type AssistantContextValue } from "@/components/ai/assistant-context";
 import { AssistantChat } from "@/components/ai/chat";
-import { speak, speechSupported, stopSpeaking as stopSynth, warmVoices } from "@/components/ai/use-voice";
+import { hasVoiceFor, speak, speechSupported, stopSpeaking as stopSynth, warmVoices } from "@/components/ai/use-voice";
 import { Button } from "@/components/ui/button";
 import { askAssistant } from "@/lib/ai/client";
+import { detectLang, strings, type Lang } from "@/lib/ai/i18n";
 import type { AssistantAnswer, ChatTurn, PageContext } from "@/lib/ai/types";
 import { indexStore } from "@/lib/data/store";
 import { useStoreContext } from "@/lib/data/store-context";
@@ -17,24 +19,36 @@ import { cn } from "@/lib/utils";
 
 let seq = 0;
 const nextId = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`;
+const VOICE_LANG_KEY = "assistant.voiceLang";
 
 /** What gets read aloud: the sentence, the recommendation, and a hint that details are on screen. */
 export function spokenText(a: AssistantAnswer): string {
+  const s = strings(a.lang ?? "en").spoken;
   const parts = [a.text];
-  if (a.recommendation) parts.push(`Recommendation: ${a.recommendation}`);
-  if (a.table && a.table.rows.length > 0) parts.push(`I've listed ${a.table.rows.length} ${a.table.rows.length === 1 ? "item" : "items"} on screen.`);
+  if (a.recommendation) parts.push(s.recommendation(a.recommendation));
+  if (a.table && a.table.rows.length > 0) parts.push(s.listed(a.table.rows.length));
   return parts
     .join(" ")
-    .replace(/\$(\d[\d,]*)/g, "$1 dollars")
-    .replace(/—/g, ",")
-    .replace(/·/g, ",");
+    .replace(/\$(\d[\d,]*)/g, (_, amount: string) => s.dollars(amount))
+    .replace(/[—←→]/g, ",")
+    .replace(/·/g, ",")
+    .replace(/[“”«»]/g, "");
+}
+
+function readStoredLang(): Lang {
+  if (typeof window === "undefined") return "en";
+  try {
+    return window.localStorage.getItem(VOICE_LANG_KEY) === "ar" ? "ar" : "en";
+  } catch {
+    return "en";
+  }
 }
 
 /**
  * The assistant lives above every page: one conversation, aware of the
  * building / tenant / unit on screen, reachable from the floating button or
  * the full /ai page. It listens and talks back through the browser's own
- * speech APIs.
+ * speech APIs, in English or Arabic.
  */
 export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const { store, status: loadStatus } = useStoreContext();
@@ -47,16 +61,27 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [speaking, setSpeaking] = useState(false);
   const [speechCompletedCount, setSpeechCompletedCount] = useState(0);
   const [speakSupported] = useState(() => speechSupported().speak);
+  const [voiceLang, setVoiceLangState] = useState<Lang>(() => readStoredLang());
   const storeRef = useRef(store);
   storeRef.current = store;
   const speakRepliesRef = useRef(speakReplies);
   speakRepliesRef.current = speakReplies;
   // Distinguishes "the answer finished" from "the user hit Stop".
   const stoppedByUserRef = useRef(false);
+  const noArabicVoiceWarnedRef = useRef(false);
 
   useEffect(() => {
     warmVoices();
     return () => stopSynth();
+  }, []);
+
+  const setVoiceLang = useCallback((lang: Lang) => {
+    setVoiceLangState(lang);
+    try {
+      window.localStorage.setItem(VOICE_LANG_KEY, lang);
+    } catch {
+      /* private mode — the toggle still works for this session */
+    }
   }, []);
 
   const context = useMemo<PageContext>(() => {
@@ -89,20 +114,34 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     stoppedByUserRef.current = false;
     // `onstart` is unreliable in some engines; mark speaking as soon as the
     // utterance is queued and let onend/onerror (or Stop) clear it.
-    const ok = speak(spokenText(answer), {
-      onStart: () => setSpeaking(true),
-      onEnd: () => {
-        setSpeaking(false);
-        if (!stoppedByUserRef.current) setSpeechCompletedCount((n) => n + 1);
+    const ok = speak(
+      spokenText(answer),
+      {
+        onStart: () => setSpeaking(true),
+        onEnd: () => {
+          setSpeaking(false);
+          if (!stoppedByUserRef.current) setSpeechCompletedCount((n) => n + 1);
+        },
       },
-    });
+      answer.lang ?? "en",
+    );
     setSpeaking(ok);
+    if (!ok) {
+      if ((answer.lang ?? "en") === "ar" && !hasVoiceFor("ar") && !noArabicVoiceWarnedRef.current) {
+        noArabicVoiceWarnedRef.current = true;
+        const ui = strings("ar").ui;
+        toast(ui.noArabicVoice, { description: ui.noArabicVoiceHint, duration: 8000 });
+      }
+      // Nothing to hear: still let a voice conversation resume listening.
+      setSpeechCompletedCount((n) => n + 1);
+    }
   }, []);
 
   const ask = useCallback(
     async (question: string, opts: AskOptions = {}) => {
       const q = question.trim();
       if (!q || loadStatus.state !== "ready") return;
+      const lang = opts.lang ?? detectLang(q);
       stoppedByUserRef.current = true;
       stopSynth();
       setSpeaking(false);
@@ -117,11 +156,12 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           history: turns,
           store: storeRef.current,
           context,
+          lang,
           onStatus: setStatus,
         });
         if (opts.spoken && answer.source === "fallback") {
           // Show the speaker what was actually heard, so a mis-transcription is obvious.
-          answer = { ...answer, text: `I heard “${q}”. ${answer.text}` };
+          answer = { ...answer, text: `${strings(answer.lang ?? lang).heard(q)} ${answer.text}` };
         }
         setTurns((t) => t.map((x) => (x.id === pendingId ? { id: pendingId, role: "assistant", answer } : x)));
         if (opts.spoken || speakRepliesRef.current) say(answer);
@@ -167,11 +207,14 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
       stopSpeaking,
       speakSupported,
       speechCompletedCount,
+      voiceLang,
+      setVoiceLang,
     }),
-    [turns, busy, status, context.propertyName, ask, clear, open, speakReplies, toggleSpeak, speaking, stopSpeaking, speakSupported, speechCompletedCount],
+    [turns, busy, status, context.propertyName, ask, clear, open, speakReplies, toggleSpeak, speaking, stopSpeaking, speakSupported, speechCompletedCount, voiceLang, setVoiceLang],
   );
 
   const onAiPage = pathname === "/ai";
+  const ui = strings(voiceLang).ui;
 
   return (
     <AssistantContext.Provider value={value}>
@@ -189,8 +232,10 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                   <Sparkles className="size-3.5" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold leading-tight">Assistant</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{context.propertyName ? `Scoped to ${context.propertyName}` : "Whole portfolio"}</span>
+                  <span className="block text-sm font-semibold leading-tight">{voiceLang === "ar" ? "المساعد" : "Assistant"}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {context.propertyName ? (voiceLang === "ar" ? `ضمن ${context.propertyName}` : `Scoped to ${context.propertyName}`) : voiceLang === "ar" ? "كل المحفظة" : "Whole portfolio"}
+                  </span>
                 </span>
                 {speakSupported && (
                   <Button
@@ -232,8 +277,9 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
             )}
           >
             <Sparkles className="size-4" />
-            {open ? "Close" : "Ask"}
+            {open ? (voiceLang === "ar" ? "إغلاق" : "Close") : voiceLang === "ar" ? "اسأل" : "Ask"}
           </button>
+          <span className="sr-only">{ui.tapToTalk}</span>
         </>
       )}
     </AssistantContext.Provider>

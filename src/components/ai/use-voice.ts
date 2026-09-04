@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { ARABIC_END_PHRASES, normalizeArabic } from "@/lib/ai/arabic";
+import type { Lang } from "@/lib/ai/i18n";
+
 /**
  * Browser-native voice: the Web Speech API for listening (Chromium/Safari)
  * and SpeechSynthesis for talking back. No keys, no network beyond what the
@@ -58,6 +61,13 @@ const SILENCE_MS = 1500;
 const MAX_SESSION_MS = 20_000;
 /** Spoken phrases that end a voice conversation instead of asking a question. */
 const END_PHRASES = /^(stop|that s all|thats all|that is all|thank you|thanks|bye|goodbye|no thanks|nothing|done|cancel|never mind|nevermind)\b[.!]?$/i;
+
+function isEndPhrase(text: string): boolean {
+  const latin = text.toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim();
+  if (latin && END_PHRASES.test(latin)) return true;
+  const arabic = normalizeArabic(text);
+  return arabic.length > 0 && ARABIC_END_PHRASES.includes(arabic);
+}
 
 export interface UseVoiceOptions {
   /** Called with the final transcript when the speaker has finished. */
@@ -144,7 +154,7 @@ export function useVoice({ onFinal, onIdle, lang = "en-US" }: UseVoiceOptions): 
       silenceTimer.current = setTimeout(() => {
         // Only send once there is something worth sending; otherwise keep listening.
         const words = transcriptRef.current.trim().split(/\s+/).filter(Boolean).length;
-        if (words >= 2 || END_PHRASES.test(transcriptRef.current.trim().toLowerCase())) rec.stop();
+        if (words >= 2 || isEndPhrase(transcriptRef.current)) rec.stop();
         else armSilence();
       }, SILENCE_MS);
     };
@@ -205,7 +215,7 @@ export function useVoice({ onFinal, onIdle, lang = "en-US" }: UseVoiceOptions): 
         onIdleRef.current?.("no-speech");
         return;
       }
-      if (END_PHRASES.test(text.toLowerCase().replace(/[^a-z\s]/g, " ").replace(/\s+/g, " ").trim())) {
+      if (isEndPhrase(text)) {
         onIdleRef.current?.("end-phrase");
         return;
       }
@@ -234,33 +244,55 @@ export function useVoice({ onFinal, onIdle, lang = "en-US" }: UseVoiceOptions): 
 
 /* ------------------------------- Speaking -------------------------------- */
 
-function pickVoice(): SpeechSynthesisVoice | null {
+const PREFERRED_VOICES: Record<Lang, string[]> = {
+  en: ["Google UK English Female", "Microsoft Aria Online (Natural) - English (United States)", "Microsoft Jenny Online (Natural) - English (United States)", "Samantha", "Google US English"],
+  ar: ["Microsoft Salma Online (Natural) - Arabic (Egypt)", "Microsoft Layla Online (Natural) - Arabic (Lebanon)", "Microsoft Hamed - Arabic (Saudi Arabia)", "Microsoft Naayf - Arabic (Saudi Arabia)", "Google العربية", "Majed", "Maged"],
+};
+
+function pickVoice(lang: Lang): SpeechSynthesisVoice | null {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return null;
   const voices = window.speechSynthesis.getVoices();
-  const preferred = ["Google UK English Female", "Microsoft Aria Online (Natural) - English (United States)", "Microsoft Jenny Online (Natural) - English (United States)", "Samantha", "Google US English"];
-  for (const name of preferred) {
+  for (const name of PREFERRED_VOICES[lang]) {
     const v = voices.find((x) => x.name === name);
     if (v) return v;
   }
-  return voices.find((v) => v.lang.startsWith("en") && v.localService) ?? voices.find((v) => v.lang.startsWith("en")) ?? voices[0] ?? null;
+  const prefix = lang === "ar" ? "ar" : "en";
+  const lebanese = lang === "ar" ? voices.find((v) => /^ar[-_]LB/i.test(v.lang)) : undefined;
+  return lebanese ?? voices.find((v) => v.lang.toLowerCase().startsWith(prefix) && v.localService) ?? voices.find((v) => v.lang.toLowerCase().startsWith(prefix)) ?? (lang === "ar" ? null : voices[0] ?? null);
 }
 
-export function speak(text: string, handlers: { onStart?: () => void; onEnd?: () => void } = {}): boolean {
+/** Whether the browser has any voice for the language. */
+export function hasVoiceFor(lang: Lang): boolean {
+  return pickVoice(lang) !== null;
+}
+
+export function speak(text: string, handlers: { onStart?: () => void; onEnd?: () => void } = {}, lang: Lang = "en"): boolean {
   if (typeof window === "undefined" || !("speechSynthesis" in window) || !text.trim()) return false;
   const synth = window.speechSynthesis;
   synth.cancel();
   const u = new SpeechSynthesisUtterance(text);
-  const voice = pickVoice();
+  const voice = pickVoice(lang);
+  // Voices are loaded but none can read Arabic: say nothing rather than let an
+  // English voice mangle it — the caller shows the answer on screen instead.
+  if (!voice && lang === "ar" && synth.getVoices().length > 0) return false;
   if (voice) u.voice = voice;
-  u.lang = voice?.lang ?? "en-US";
-  u.rate = 1.02;
+  u.lang = voice?.lang ?? (lang === "ar" ? "ar-LB" : "en-US");
+  u.rate = lang === "ar" ? 1 : 1.02;
   u.pitch = 1;
   let ended = false;
+  let guard = 0;
   const end = () => {
     if (ended) return;
     ended = true;
+    window.clearTimeout(guard);
     handlers.onEnd?.();
   };
+  // Some engines never fire onend for an utterance they cannot voice; don't let
+  // a conversation hang on "speaking" forever.
+  guard = window.setTimeout(() => {
+    synth.cancel();
+    end();
+  }, 4000 + text.length * 120);
   u.onstart = () => handlers.onStart?.();
   u.onend = end;
   u.onerror = end;

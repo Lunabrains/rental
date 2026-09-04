@@ -2,6 +2,7 @@ import { today } from "@/lib/date";
 import type { Store } from "@/types";
 
 import { answerLocally, unknownAnswer } from "./demo-engine";
+import { detectLang, strings, type Lang } from "./i18n";
 import { buildSystemPrompt } from "./system-prompt";
 import { executeTool, knownActionTarget, TOOL_DEFINITIONS } from "./tools";
 import type { AiRequest, AiResponse, AnswerAction, ApiMessage, AssistantAnswer, ChatTurn, ContentBlock, PageContext, ToolUseBlock } from "./types";
@@ -20,39 +21,41 @@ export interface AskOptions {
   history: ChatTurn[];
   store: Store;
   context: PageContext;
+  /** Answer language; detected from the script of the question when omitted. */
+  lang?: Lang;
   onStatus?: (status: string) => void;
 }
 
 /**
  * Answer a question. Order of business:
- *   1. the local demo brain — instant, exact, no network (covers the six
- *      rehearsed questions and the common shapes an owner asks);
+ *   1. the local demo brain — instant, exact, no network, English or Arabic;
  *   2. Claude with the read-only tool layer, when a key is configured;
  *   3. an honest "I can't answer that from the data" with suggestions.
  */
 export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
   const { question, store, context } = opts;
+  const lang = opts.lang ?? detectLang(question);
 
-  const local = answerLocally(question, store, context);
+  const local = answerLocally(question, store, context, lang);
   if (local) return local;
 
-  if (modelAvailable === false) return unknownAnswer(question);
+  if (modelAvailable === false) return unknownAnswer(question, lang);
 
-  const system = buildSystemPrompt(context, today());
+  const system = buildSystemPrompt(context, today(), lang);
   const messages: ApiMessage[] = [...historyToMessages(opts.history), { role: "user", content: question }];
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
-    opts.onStatus?.(round === 0 ? "Thinking…" : "Looking things up…");
+    opts.onStatus?.(round === 0 ? (lang === "ar" ? "أفكر…" : "Thinking…") : lang === "ar" ? "أبحث…" : "Looking things up…");
     const res = await callApi({ system, messages, tools: TOOL_DEFINITIONS });
     if (!res.ok) {
       if (res.error === "no_credentials") modelAvailable = false;
-      return res.error === "no_credentials" ? unknownAnswer(question) : fallbackAnswer(res.error, res.message);
+      return res.error === "no_credentials" ? unknownAnswer(question, lang) : fallbackAnswer(res.error, res.message, question, lang);
     }
     modelAvailable = true;
 
     const toolUses = res.content.filter((b): b is ToolUseBlock => b.type === "tool_use");
     const final = toolUses.find((b) => b.name === "answer");
-    if (final) return sanitizeAnswer(final.input, store);
+    if (final) return sanitizeAnswer(final.input, store, lang);
 
     if (toolUses.length === 0) {
       const text = res.content
@@ -60,7 +63,7 @@ export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
         .map((b) => b.text)
         .join("\n")
         .trim();
-      return text ? { text, source: "model" } : unknownAnswer(question);
+      return text ? { text, source: "model", lang } : unknownAnswer(question, lang);
     }
 
     messages.push({ role: "assistant", content: res.content });
@@ -77,7 +80,7 @@ export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
     });
   }
 
-  return { text: "That took too many steps — try a more specific question.", source: "fallback" };
+  return { text: strings(lang).tooManySteps, source: "fallback", lang };
 }
 
 function historyToMessages(history: ChatTurn[]): ApiMessage[] {
@@ -114,7 +117,7 @@ async function callApi(body: AiRequest): Promise<AiResponse> {
   }
 }
 
-function sanitizeAnswer(input: Record<string, unknown>, store: Store): AssistantAnswer {
+function sanitizeAnswer(input: Record<string, unknown>, store: Store, lang: Lang): AssistantAnswer {
   const text = typeof input.text === "string" ? input.text : "";
   const table = isTable(input.table) ? input.table : undefined;
   const cards = Array.isArray(input.cards) ? (input.cards as AssistantAnswer["cards"]) : undefined;
@@ -122,7 +125,7 @@ function sanitizeAnswer(input: Record<string, unknown>, store: Store): Assistant
   const actions = Array.isArray(input.actions)
     ? (input.actions as AnswerAction[]).filter((a) => a && typeof a.kind === "string" && typeof a.targetId === "string" && knownActionTarget(store, a.kind, a.targetId)).slice(0, 4)
     : undefined;
-  return { text, table, cards, recommendation, actions, source: "model" };
+  return { text, table, cards, recommendation, actions, source: "model", lang: detectLang(text) === "ar" ? "ar" : lang };
 }
 
 function isTable(v: unknown): v is AssistantAnswer["table"] & object {
@@ -131,7 +134,8 @@ function isTable(v: unknown): v is AssistantAnswer["table"] & object {
 
 type AiErrorKind = Extract<AiResponse, { ok: false }>["error"];
 
-function fallbackAnswer(error: AiErrorKind, message: string): AssistantAnswer {
-  if (error === "rate_limited") return { text: "The model is rate-limited right now — try again in a few seconds.", source: "fallback" };
-  return { ...unknownAnswer(""), text: `I couldn't reach the model (${message}). I can still answer from the portfolio data — try one of these:` };
+function fallbackAnswer(error: AiErrorKind, message: string, question: string, lang: Lang): AssistantAnswer {
+  const s = strings(lang);
+  if (error === "rate_limited") return { text: s.rateLimited, source: "fallback", lang };
+  return { ...unknownAnswer(question, lang), text: s.modelUnreachable(message) };
 }
