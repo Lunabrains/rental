@@ -29,7 +29,7 @@ export const DEFAULT_THRESHOLDS: AlertThresholds = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  companyName: "Cedar Holdings",
+  companyName: "Succar Holdings",
   ownerName: "George",
   logoUrl: null,
   currency: "USD",

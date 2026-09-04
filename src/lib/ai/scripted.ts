@@ -15,6 +15,7 @@ import {
 } from "@/lib/queries";
 import type { Store } from "@/types";
 
+import { findProperty, findUnits } from "./entities";
 import type { AnswerAction, AssistantAnswer, PageContext } from "./types";
 
 /**
@@ -47,7 +48,7 @@ export function matchScripted(question: string): ScriptedId | null {
   const q = norm(question);
   if (/(regularly|repeat|often|always|habitual|frequent|chronic|keep|tend to).*(late)|late payers?|pays? late|paying late/.test(q)) return "late_payers";
   if (/who (is )?(rent|liv|occup|stay|in) |whos in |who has |tenant (in|of) /.test(q) && /\b[a-z]?\d{3,4}\b/.test(q)) return "who_rents";
-  if (/(which|what) building|building (needs|should|requires)|worst building|weakest|problem building|building.*attention/.test(q)) return "building";
+  if (/(which|what) building|building (needs|should|requires)|worst building|weakest|problem building|building.*attention/.test(q) && !/\b(best|top|highest|strongest|rank|compare)\b/.test(q)) return "building";
   if (/(contract|lease|renewal)s?.*(expir|end|worry|due|up)|(expir|ending).*(contract|lease)|next (30|thirty) days|this month.*(contract|lease)/.test(q)) return "expiring";
   if (/(hasnt|has not|havent|have not|didnt|did not|not) paid|unpaid|owe|overdue|behind on rent|who paid|missing (rent|payment)|outstanding/.test(q)) return "unpaid";
   if (/attention|priorit|what should i|to do today|focus|urgent|worry about today|whats important/.test(q)) return "attention";
@@ -196,9 +197,9 @@ export function answerScripted(id: ScriptedId, question: string, store: Store, c
       const q = norm(question);
       const unitMatch = /\b([a-z]?\d{3,4})\b/.exec(q);
       const unitNumber = unitMatch?.[1] ?? "";
-      const named = store.properties.find((p) => q.includes(p.name.toLowerCase()));
-      const property = named ?? (scopeId ? idx.propertyById.get(scopeId) : undefined);
-      const candidates = store.units.filter((u) => u.unitNumber.toLowerCase() === unitNumber && (!property || u.propertyId === property.id));
+      const named = findProperty(store, q);
+      const property = named ?? (scopeId ? idx.propertyById.get(scopeId) ?? null : null);
+      const candidates = findUnits(store, unitNumber, property);
       if (candidates.length !== 1) {
         const hint = candidates.length > 1 ? `Unit ${unitNumber.toUpperCase()} exists in ${candidates.map((u) => idx.propertyById.get(u.propertyId)?.name).join(", ")} — which building?` : `I couldn't find unit ${unitNumber.toUpperCase()}${property ? ` in ${property.name}` : ""}.`;
         const s = searchAll(store, unitNumber, 5);

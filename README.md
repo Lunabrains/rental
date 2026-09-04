@@ -16,12 +16,19 @@ same importer the UI exposes; **Reset demo data** (Settings, or Settings → Imp
 
 ### AI assistant
 
-The six rehearsed questions answer instantly from the query layer and need no key. Free-form
-questions call Claude with a read-only tool layer; to enable them:
+The assistant works fully offline for the demo: a local intent router (`src/lib/ai/demo-engine.ts`)
+answers questions about payments, contracts, buildings, units, tenants, vacancies, alerts, revenue
+and recent activity straight from the query layer — instantly, with the same numbers as the
+screens. It is available on every page from the floating **Ask** button and on `/ai`.
 
-```bash
-cp .env.example .env.local   # then set ANTHROPIC_API_KEY
-```
+**Voice:** tap the mic and speak — the browser's Web Speech API transcribes the question (Chrome /
+Edge); the speaker toggle reads answers back. No keys or services involved.
+
+Optional: with `ANTHROPIC_API_KEY` in `.env.local` (see `.env.example`), questions the local
+router cannot place fall through to Claude with a read-only tool layer. Without a key they get an
+honest "I can't answer that from the portfolio data" plus suggestions.
+
+Try the battery: `npx tsx scripts/check-assistant.ts` (or pass your own questions as arguments).
 
 ## The demo script (~6 minutes)
 

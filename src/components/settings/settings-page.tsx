@@ -42,7 +42,7 @@ export function SettingsPage() {
   const dirtyThresholds = (Object.keys(thresholds) as ThresholdKey[]).some((k) => thresholds[k] !== store.settings.thresholds[k]);
 
   function saveCompany() {
-    run(updateCompany({ companyName: companyName.trim() || "Cedar Holdings", ownerName: ownerName.trim() || "Owner" }));
+    run(updateCompany({ companyName: companyName.trim() || "Succar Holdings", ownerName: ownerName.trim() || "Owner" }));
     toast.success("Company details saved");
   }
 

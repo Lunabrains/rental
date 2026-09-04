@@ -1,12 +1,19 @@
 import { today } from "@/lib/date";
 import type { Store } from "@/types";
 
-import { answerScripted, matchScripted, SUGGESTED_QUESTIONS } from "./scripted";
+import { answerLocally, unknownAnswer } from "./demo-engine";
 import { buildSystemPrompt } from "./system-prompt";
 import { executeTool, knownActionTarget, TOOL_DEFINITIONS } from "./tools";
 import type { AiRequest, AiResponse, AnswerAction, ApiMessage, AssistantAnswer, ChatTurn, ContentBlock, PageContext, ToolUseBlock } from "./types";
 
 const MAX_ROUNDS = 6;
+
+/**
+ * Whether Claude is reachable this session. Starts unknown; the first
+ * "no_credentials" answer flips it off so the demo never waits on the
+ * network again.
+ */
+let modelAvailable: boolean | null = null;
 
 export interface AskOptions {
   question: string;
@@ -17,15 +24,19 @@ export interface AskOptions {
 }
 
 /**
- * Answer a question. The six rehearsed questions are answered instantly from
- * the query layer; everything else runs a tool-use loop against Claude with
- * tools executed here, in the browser, against the in-memory store.
+ * Answer a question. Order of business:
+ *   1. the local demo brain — instant, exact, no network (covers the six
+ *      rehearsed questions and the common shapes an owner asks);
+ *   2. Claude with the read-only tool layer, when a key is configured;
+ *   3. an honest "I can't answer that from the data" with suggestions.
  */
 export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
   const { question, store, context } = opts;
 
-  const scripted = matchScripted(question);
-  if (scripted) return answerScripted(scripted, question, store, context);
+  const local = answerLocally(question, store, context);
+  if (local) return local;
+
+  if (modelAvailable === false) return unknownAnswer(question);
 
   const system = buildSystemPrompt(context, today());
   const messages: ApiMessage[] = [...historyToMessages(opts.history), { role: "user", content: question }];
@@ -33,7 +44,11 @@ export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
   for (let round = 0; round < MAX_ROUNDS; round++) {
     opts.onStatus?.(round === 0 ? "Thinking…" : "Looking things up…");
     const res = await callApi({ system, messages, tools: TOOL_DEFINITIONS });
-    if (!res.ok) return fallbackAnswer(res.error, res.message);
+    if (!res.ok) {
+      if (res.error === "no_credentials") modelAvailable = false;
+      return res.error === "no_credentials" ? unknownAnswer(question) : fallbackAnswer(res.error, res.message);
+    }
+    modelAvailable = true;
 
     const toolUses = res.content.filter((b): b is ToolUseBlock => b.type === "tool_use");
     const final = toolUses.find((b) => b.name === "answer");
@@ -45,7 +60,7 @@ export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
         .map((b) => b.text)
         .join("\n")
         .trim();
-      return { text: text || "I couldn't work out an answer from the data.", source: "model" };
+      return text ? { text, source: "model" } : unknownAnswer(question);
     }
 
     messages.push({ role: "assistant", content: res.content });
@@ -117,13 +132,6 @@ function isTable(v: unknown): v is AssistantAnswer["table"] & object {
 type AiErrorKind = Extract<AiResponse, { ok: false }>["error"];
 
 function fallbackAnswer(error: AiErrorKind, message: string): AssistantAnswer {
-  const suggestions = SUGGESTED_QUESTIONS.map((q) => `“${q.text}”`).join(", ");
-  if (error === "no_credentials") {
-    return {
-      text: `Free-form questions need a Claude API key: add ANTHROPIC_API_KEY to .env.local and restart. The six rehearsed questions work without it — try ${suggestions}.`,
-      source: "fallback",
-    };
-  }
   if (error === "rate_limited") return { text: "The model is rate-limited right now — try again in a few seconds.", source: "fallback" };
-  return { text: `I couldn't reach the model (${message}). The rehearsed questions still work: ${suggestions}.`, source: "fallback" };
+  return { ...unknownAnswer(""), text: `I couldn't reach the model (${message}). I can still answer from the portfolio data — try one of these:` };
 }

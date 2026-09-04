@@ -4,16 +4,27 @@ import { createContext, useContext } from "react";
 
 import type { ChatTurn } from "@/lib/ai/types";
 
+export interface AskOptions {
+  /** The question was spoken — read the answer back. */
+  spoken?: boolean;
+}
+
 export interface AssistantContextValue {
   turns: ChatTurn[];
   busy: boolean;
   status: string | null;
   /** Human label for the current scope, e.g. "Beirut Heights". */
   contextLabel: string | null;
-  ask: (question: string) => Promise<void>;
+  ask: (question: string, opts?: AskOptions) => Promise<void>;
   clear: () => void;
   open: boolean;
   setOpen: (open: boolean) => void;
+  /** Voice output. */
+  speakReplies: boolean;
+  setSpeakReplies: (on: boolean) => void;
+  speaking: boolean;
+  stopSpeaking: () => void;
+  speakSupported: boolean;
 }
 
 export const AssistantContext = createContext<AssistantContextValue | null>(null);

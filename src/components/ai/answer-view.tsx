@@ -3,12 +3,14 @@
 import { Lightbulb } from "lucide-react";
 
 import { useActions } from "@/components/actions/action-provider";
+import { useAssistant } from "@/components/ai/assistant-context";
 import { Button } from "@/components/ui/button";
 import type { AssistantAnswer } from "@/lib/ai/types";
 import { cn } from "@/lib/utils";
 
 export function AnswerView({ answer, compact }: { answer: AssistantAnswer; compact?: boolean }) {
   const { perform } = useActions();
+  const { ask, busy } = useAssistant();
 
   return (
     <div className="space-y-3">
@@ -79,6 +81,22 @@ export function AnswerView({ answer, compact }: { answer: AssistantAnswer; compa
             <Button key={`${a.kind}-${a.targetId}-${i}`} size="sm" variant={i === 0 ? "default" : "outline"} className="h-7 px-2.5 text-xs" onClick={() => perform(a)}>
               {a.label}
             </Button>
+          ))}
+        </div>
+      )}
+
+      {answer.suggestions && answer.suggestions.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {answer.suggestions.slice(0, compact ? 3 : 6).map((s) => (
+            <button
+              key={s}
+              type="button"
+              disabled={busy}
+              onClick={() => void ask(s)}
+              className="rounded-full border bg-background px-2.5 py-1 text-[11px] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground disabled:opacity-50"
+            >
+              {s}
+            </button>
           ))}
         </div>
       )}

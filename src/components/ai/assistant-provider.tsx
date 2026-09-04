@@ -1,15 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
-import { Maximize2, Sparkles, Trash2, X } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Maximize2, Sparkles, Trash2, Volume2, VolumeX, X } from "lucide-react";
 import Link from "next/link";
 
-import { AssistantContext, type AssistantContextValue } from "@/components/ai/assistant-context";
+import { AssistantContext, type AskOptions, type AssistantContextValue } from "@/components/ai/assistant-context";
 import { AssistantChat } from "@/components/ai/chat";
+import { speak, speechSupported, stopSpeaking as stopSynth, warmVoices } from "@/components/ai/use-voice";
 import { Button } from "@/components/ui/button";
 import { askAssistant } from "@/lib/ai/client";
-import type { ChatTurn, PageContext } from "@/lib/ai/types";
+import type { AssistantAnswer, ChatTurn, PageContext } from "@/lib/ai/types";
 import { indexStore } from "@/lib/data/store";
 import { useStoreContext } from "@/lib/data/store-context";
 import { cn } from "@/lib/utils";
@@ -17,10 +18,23 @@ import { cn } from "@/lib/utils";
 let seq = 0;
 const nextId = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`;
 
+/** What gets read aloud: the sentence, the recommendation, and a hint that details are on screen. */
+export function spokenText(a: AssistantAnswer): string {
+  const parts = [a.text];
+  if (a.recommendation) parts.push(`Recommendation: ${a.recommendation}`);
+  if (a.table && a.table.rows.length > 0) parts.push(`I've listed ${a.table.rows.length} ${a.table.rows.length === 1 ? "item" : "items"} on screen.`);
+  return parts
+    .join(" ")
+    .replace(/\$(\d[\d,]*)/g, "$1 dollars")
+    .replace(/—/g, ",")
+    .replace(/·/g, ",");
+}
+
 /**
  * The assistant lives above every page: one conversation, aware of the
  * building / tenant / unit on screen, reachable from the floating button or
- * the full /ai page.
+ * the full /ai page. It listens and talks back through the browser's own
+ * speech APIs.
  */
 export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const { store, status: loadStatus } = useStoreContext();
@@ -29,8 +43,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [speakReplies, setSpeakReplies] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [speakSupported] = useState(() => speechSupported().speak);
   const storeRef = useRef(store);
   storeRef.current = store;
+  const speakRepliesRef = useRef(speakReplies);
+  speakRepliesRef.current = speakReplies;
+
+  useEffect(() => {
+    warmVoices();
+    return () => stopSynth();
+  }, []);
 
   const context = useMemo<PageContext>(() => {
     const idx = indexStore(store);
@@ -52,10 +76,24 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
     return ctx;
   }, [pathname, store]);
 
+  const stopSpeaking = useCallback(() => {
+    stopSynth();
+    setSpeaking(false);
+  }, []);
+
+  const say = useCallback((answer: AssistantAnswer) => {
+    // `onstart` is unreliable in some engines; mark speaking as soon as the
+    // utterance is queued and let onend/onerror (or Stop) clear it.
+    const ok = speak(spokenText(answer), { onStart: () => setSpeaking(true), onEnd: () => setSpeaking(false) });
+    setSpeaking(ok);
+  }, []);
+
   const ask = useCallback(
-    async (question: string) => {
+    async (question: string, opts: AskOptions = {}) => {
       const q = question.trim();
       if (!q || loadStatus.state !== "ready") return;
+      stopSynth();
+      setSpeaking(false);
       const userTurn: ChatTurn = { id: nextId(), role: "user", text: q };
       const pendingId = nextId();
       setTurns((t) => [...t, userTurn, { id: pendingId, role: "assistant", pending: true }]);
@@ -70,6 +108,7 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
           onStatus: setStatus,
         });
         setTurns((t) => t.map((x) => (x.id === pendingId ? { id: pendingId, role: "assistant", answer } : x)));
+        if (opts.spoken || speakRepliesRef.current) say(answer);
       } catch (err) {
         setTurns((t) => t.map((x) => (x.id === pendingId ? { id: pendingId, role: "assistant", error: err instanceof Error ? err.message : String(err) } : x)));
       } finally {
@@ -77,14 +116,40 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
         setStatus(null);
       }
     },
-    [context, loadStatus.state, turns],
+    [context, loadStatus.state, turns, say],
   );
 
-  const clear = useCallback(() => setTurns([]), []);
+  const clear = useCallback(() => {
+    stopSynth();
+    setSpeaking(false);
+    setTurns([]);
+  }, []);
+
+  const toggleSpeak = useCallback((on: boolean) => {
+    setSpeakReplies(on);
+    if (!on) {
+      stopSynth();
+      setSpeaking(false);
+    }
+  }, []);
 
   const value = useMemo<AssistantContextValue>(
-    () => ({ turns, busy, status, contextLabel: context.propertyName ?? null, ask, clear, open, setOpen }),
-    [turns, busy, status, context.propertyName, ask, clear, open],
+    () => ({
+      turns,
+      busy,
+      status,
+      contextLabel: context.propertyName ?? null,
+      ask,
+      clear,
+      open,
+      setOpen,
+      speakReplies,
+      setSpeakReplies: toggleSpeak,
+      speaking,
+      stopSpeaking,
+      speakSupported,
+    }),
+    [turns, busy, status, context.propertyName, ask, clear, open, speakReplies, toggleSpeak, speaking, stopSpeaking, speakSupported],
   );
 
   const onAiPage = pathname === "/ai";
@@ -108,6 +173,18 @@ export function AssistantProvider({ children }: { children: React.ReactNode }) {
                   <span className="block text-sm font-semibold leading-tight">Assistant</span>
                   <span className="block truncate text-[11px] text-muted-foreground">{context.propertyName ? `Scoped to ${context.propertyName}` : "Whole portfolio"}</span>
                 </span>
+                {speakSupported && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={cn("size-7", speakReplies && "text-brand")}
+                    aria-label={speakReplies ? "Stop reading answers aloud" : "Read answers aloud"}
+                    aria-pressed={speakReplies}
+                    onClick={() => toggleSpeak(!speakReplies)}
+                  >
+                    {speakReplies ? <Volume2 className="size-3.5" /> : <VolumeX className="size-3.5" />}
+                  </Button>
+                )}
                 {turns.length > 0 && (
                   <Button size="icon" variant="ghost" className="size-7" aria-label="Clear conversation" onClick={clear}>
                     <Trash2 className="size-3.5" />

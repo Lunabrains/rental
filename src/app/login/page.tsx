@@ -15,7 +15,7 @@ export default function LoginPage() {
             <Building className="size-4.5" strokeWidth={2.25} />
           </span>
           <div>
-            <div className="text-sm font-semibold leading-tight">Cedar Holdings</div>
+            <div className="text-sm font-semibold leading-tight">Succar Holdings</div>
             <div className="text-[11px] text-muted-foreground">Command Center</div>
           </div>
         </div>

@@ -33,7 +33,9 @@ export interface AssistantAnswer {
   cards?: AnswerCard[];
   recommendation?: string;
   actions?: AnswerAction[];
-  source: "scripted" | "model" | "fallback";
+  /** Follow-up questions the user can tap. */
+  suggestions?: string[];
+  source: "scripted" | "local" | "model" | "fallback";
 }
 
 export interface ChatTurn {
