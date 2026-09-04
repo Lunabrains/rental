@@ -1,7 +1,7 @@
-import { PlaceholderPage } from "@/components/common/placeholder";
+import { ImportPage } from "@/components/import/import-page";
 
 export const metadata = { title: "Data Import" };
 
 export default function Page() {
-  return <PlaceholderPage title="Data Import" description="Import buildings, units, tenants and contracts from a template." phase={2} />;
+  return <ImportPage />;
 }
