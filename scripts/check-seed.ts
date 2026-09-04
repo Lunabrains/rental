@@ -52,6 +52,15 @@ function dump(store: Store, title: string) {
   console.log(`expiring: ${o.expiring30} within 30d · ${o.expiring60} within 60d · vacant > 45d: ${o.vacantOver45}`);
   console.log(`critical alerts ${o.criticalAlerts.total} (${store.alerts.length} total alerts)`);
 
+  const byType = new Map<string, number>();
+  for (const a of store.alerts) byType.set(`${a.severity}/${a.type}`, (byType.get(`${a.severity}/${a.type}`) ?? 0) + 1);
+  console.log("\nalerts by type:");
+  for (const [k, n] of [...byType.entries()].sort()) console.log(`  ${k.padEnd(44)} ${n}`);
+  console.log("\ntop critical (by weight):");
+  for (const a of store.alerts.filter((x) => x.severity === "critical").sort((x, y) => y.weight - x.weight).slice(0, 12)) {
+    console.log(`  ${String(a.weight).padStart(6)}  ${a.title}`);
+  }
+
   const perf = getPropertyPerformance(store);
   console.log("\nranking:");
   for (const r of perf.rows) {
