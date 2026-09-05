@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarClock,
   ClipboardList,
+  Truck,
   CreditCard,
   Receipt,
   FileText,
@@ -67,6 +68,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || (p.startsWith("/maintenance/") && !p.startsWith("/maintenance/preventive")) },
       { href: "/maintenance/preventive", label: "Preventive", icon: CalendarClock, match: startsWith("/maintenance/preventive") },
+      { href: "/suppliers", label: "Suppliers", icon: Truck, match: startsWith("/suppliers") },
     ],
   },
   {

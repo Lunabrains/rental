@@ -12,7 +12,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 6 — budgets, deposits, utilities, common charges
 - [x] Phase 7 — maintenance work orders
 - [x] Phase 8 — preventive maintenance & assets (QR)
-- [ ] Phase 9 — suppliers
+- [x] Phase 9 — suppliers
 - [ ] Phase 10 — inspections, move-in/out, keys, parking
 - [ ] Phase 11 — renovations / CapEx
 - [ ] Phase 12 — smart alerts engine
@@ -90,3 +90,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Dialogs (`asset-dialogs.tsx`): register/edit asset, add/edit plan, log service (rolls the plan forward, books the cost as an expense, undoable). Alert actions `view_asset`, `view_plan`, `schedule_service` wired.
 - Nav: Assets (top group), Maintenance › Preventive. Building Assets tab opens asset pages and registers assets; building Maintenance tab logs services and adds plans.
 - Tests: plan/service/asset commands already covered in `tests/maintenance.test.ts`.
+
+## Phase 9 — suppliers
+- Directory (`/suppliers`, `suppliers-page.tsx`): category and active filters, transparent performance score (popover breakdown), manual star rating, jobs done/open, average response and completion days, repeat-issue rate, cost vs quote, total spend, last job; under-performers highlighted; exports.
+- Supplier page (`/suppliers/[id]`, `supplier-page.tsx`): score breakdown with every input visible, one-click star rating (audited, undoable), contact card, work orders, assets and preventive plans assigned (log service inline), booked expenses, spend by year, contracts & insurance documents (expiry alerts via the document rules), history.
+- Dialog (`supplier-dialog.tsx`): add/edit with services list, rating and active flag; inactive suppliers are excluded from suggestions on new work orders.
+- Nav: Maintenance › Suppliers. Alert action `view_supplier` wired; work-order and asset pages link to supplier pages.
+- Scoring lives in `supplierRow` (`src/lib/queries/operations.ts`) and is covered by `tests/maintenance.test.ts`.

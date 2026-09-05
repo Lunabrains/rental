@@ -50,6 +50,7 @@ const TONES: Record<string, BadgeTone> = {
   paused: "neutral",
   none: "neutral",
   active: "success",
+  inactive: "neutral",
   // inspections
   pass: "success",
   fail: "critical",
