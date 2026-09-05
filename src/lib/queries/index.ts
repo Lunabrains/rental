@@ -12,3 +12,4 @@ export * from "./buildings";
 export * from "./units";
 export * from "./tenants";
 export * from "./finance";
+export * from "./profitability";

@@ -9,7 +9,9 @@ import {
   LayoutDashboard,
   Settings,
   Sparkles,
+  TrendingUp,
   Users,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,7 +47,12 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/finance/rent-roll", label: "Rent roll", icon: Receipt, match: startsWith("/finance/rent-roll") },
       { href: "/payments", label: "Payments", icon: CreditCard, match: startsWith("/payments") },
+      { href: "/finance/expenses", label: "Expenses", icon: Wallet, match: startsWith("/finance/expenses") },
     ],
+  },
+  {
+    label: "Analytics",
+    items: [{ href: "/analytics/performance", label: "Performance", icon: TrendingUp, match: startsWith("/analytics/performance") }],
   },
   {
     label: "Library",

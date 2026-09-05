@@ -8,7 +8,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 2 — buildings & unit 360°
 - [x] Phase 3 — tenant 360° & contract intelligence
 - [x] Phase 4 — rent roll & payment intelligence
-- [ ] Phase 5 — expenses & profitability
+- [x] Phase 5 — expenses & profitability
 - [ ] Phase 6 — budgets, deposits, utilities, common charges
 - [ ] Phase 7 — maintenance work orders
 - [ ] Phase 8 — preventive maintenance & assets (QR)
@@ -59,3 +59,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Payment detail dialog (`payment-detail-dialog.tsx`, `getPaymentDetail`): due period, amounts, method, reference, notes, receipts, ledger context, audit history; edit details (audited), waive balance with a reason (confirmed, reversible), record payment. `recordPayment` now writes an audit entry.
 - Commands: `updatePayment`, `waivePayment`, `unwaivePayment` (`src/lib/commands/payments.ts`); Finance navigation group.
 - Tests: `tests/finance.test.ts` (rent roll rows/filters/quarterly billing, dashboard, record/waive/validation).
+
+## Phase 5 — expenses & profitability
+- Expense management (`/finance/expenses`, `expenses-page.tsx`, `expense-dialog.tsx`): add/edit with building, unit, supplier, asset, category, operating/CapEx, dates, status, recurrence, invoice number; mark paid, attach invoice, schedule next occurrence, soft delete with restore; filters by period, status, category, type, supplier, building; by-category and by-supplier breakdowns; exports. Commands in `src/lib/commands/expenses.ts` (validated, audited, undoable).
+- Building profitability: Financials tab gains a profitability table (income, collected, operating expenses with maintenance and utilities, NOI, margin, CapEx, vacancy-loss estimate) for YTD and trailing 12 months.
+- Unit profitability: unit page › Profitability tab (`getUnitProfitability`): rent billed/collected, attributed expenses, work-order costs, CapEx apart, vacancy loss, net contribution, month by month.
+- Portfolio comparison (`/analytics/performance`, `getPortfolioComparison`, `getUnitRankings`): revenue, collection, expenses, maintenance, NOI, margin, NOI per unit, outstanding, vacancy loss, health; unit ranking by net contribution.
+- Tests: `tests/expenses.test.ts`.

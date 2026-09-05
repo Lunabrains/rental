@@ -9,6 +9,7 @@ export * from "./writes";
 export * from "./operations";
 export * from "./contracts";
 export * from "./payments";
+export * from "./expenses";
 
 /* -------------------------------- Import ---------------------------------- */
 

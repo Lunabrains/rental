@@ -28,16 +28,17 @@ import { PaymentsTab } from "@/components/units/payments-tab";
 import { Field, TenantTab } from "@/components/units/tenant-tab";
 import { useStore } from "@/lib/data/store-context";
 import { daysUntil } from "@/lib/date";
-import { formatDate, formatMoney, formatPercent, labelize } from "@/lib/format";
-import { getUnit360, type InspectionRow, type MeterRow, type TimelineEvent, type Unit360 } from "@/lib/queries";
+import { formatDate, formatMoney, formatMonth as formatMonthLabel, formatPercent, labelize } from "@/lib/format";
+import { getUnit360, getUnitProfitability, type InspectionRow, type MeterRow, type ProfitabilityWindow, type TimelineEvent, type Unit360 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
 
-type Tab = "overview" | "tenancy" | "payments" | "maintenance" | "inspections" | "utilities" | "documents" | "history";
+type Tab = "overview" | "tenancy" | "payments" | "profitability" | "maintenance" | "inspections" | "utilities" | "documents" | "history";
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "tenancy", label: "Tenant & contract" },
   { key: "payments", label: "Payments" },
+  { key: "profitability", label: "Profitability" },
   { key: "maintenance", label: "Maintenance" },
   { key: "inspections", label: "Inspections" },
   { key: "utilities", label: "Utilities" },
@@ -200,6 +201,7 @@ export function UnitPage({ unitId }: { unitId: string }) {
         </SectionCard>
       )}
 
+      {tab === "profitability" && <ProfitabilityTab unitId={u.unit.id} />}
       {tab === "maintenance" && <MaintenanceTab u={u} />}
       {tab === "inspections" && <InspectionsTab rows={u.inspections} />}
       {tab === "utilities" && <UtilitiesTab meters={u.meters} />}
@@ -315,6 +317,68 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
               <KeyRound className="size-3.5" /> A key for this unit is recorded as lost.
             </p>
           )}
+        </SectionCard>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------- Profitability ---------------------------- */
+
+function ProfitabilityTab({ unitId }: { unitId: string }) {
+  const store = useStore();
+  const [window, setWindow] = useState<ProfitabilityWindow>("12m");
+  const p = useMemo(() => getUnitProfitability(store, unitId, window), [store, unitId, window]);
+  if (!p) return null;
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-center gap-3">
+        <Chips<ProfitabilityWindow> aria-label="Window" value={window} onChange={setWindow} options={[{ value: "month", label: "This month" }, { value: "ytd", label: "Year to date" }, { value: "12m", label: "12 months" }]} />
+        <span className="text-xs text-muted-foreground">{p.label} · {p.months} month{p.months === 1 ? "" : "s"}</span>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Rent billed" value={formatMoney(p.rentBilled)} sublabel={`${formatMoney(p.rentCollected)} collected`} />
+        <KpiCard label="Costs attributed" value={formatMoney(p.operatingExpenses + p.maintenanceCost)} sublabel={`${formatMoney(p.operatingExpenses)} expenses · ${formatMoney(p.maintenanceCost)} work orders`} />
+        <KpiCard label="Net contribution" value={formatMoney(p.netContribution)} sublabel={`${formatPercent(p.margin)} of rent billed`} tone={p.netContribution < 0 ? "critical" : p.margin < 0.7 ? "warning" : "success"} />
+        <KpiCard label="Vacancy loss*" value={p.vacancyLoss > 0 ? formatMoney(p.vacancyLoss) : "—"} sublabel={`${p.vacancyDays} vacant days in the window${p.capex > 0 ? ` · CapEx ${formatMoney(p.capex)} kept separate` : ""}`} tone={p.vacancyLoss > 0 ? "warning" : "default"} />
+      </div>
+      <div className="grid gap-5 lg:grid-cols-2">
+        <SectionCard title="Breakdown" description="Every figure comes from the ledger, expenses and work orders on this unit">
+          <ul className="divide-y">
+            {p.breakdown.map((b) => (
+              <li key={b.label} className="flex items-center justify-between py-2 text-sm">
+                <span className={cn((b.tone === "estimate" || b.tone === "capex") && "text-muted-foreground")}>{b.label}</span>
+                <span className={cn("tabular font-medium", b.amount < 0 && b.tone === "cost" && "text-critical", b.tone === "income" && "text-success", (b.tone === "estimate" || b.tone === "capex") && "text-muted-foreground")}>{b.amount < 0 ? `−${formatMoney(Math.abs(b.amount))}` : formatMoney(b.amount)}</span>
+              </li>
+            ))}
+            <li className="flex items-center justify-between py-2 text-sm font-semibold">
+              <span>Operational net contribution</span>
+              <span className={cn("tabular", p.netContribution < 0 && "text-critical")}>{formatMoney(p.netContribution)}</span>
+            </li>
+          </ul>
+          <p className="mt-2 text-[11px] text-muted-foreground">*Vacancy loss is an estimate at the reference rent and is not subtracted from the net contribution.</p>
+        </SectionCard>
+        <SectionCard title="Month by month" flush>
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 font-medium">Month</th>
+                <th className="px-4 py-2 text-right font-medium">Rent billed</th>
+                <th className="px-4 py-2 text-right font-medium">Costs</th>
+                <th className="px-4 py-2 text-right font-medium">Net</th>
+              </tr>
+            </thead>
+            <tbody className="tabular">
+              {p.monthly.slice().reverse().map((m) => (
+                <tr key={m.period} className="border-t">
+                  <td className="px-4 py-1.5">{formatMonthLabel(m.period)}</td>
+                  <td className="px-4 py-1.5 text-right">{m.billed > 0 ? formatMoney(m.billed) : "—"}</td>
+                  <td className="px-4 py-1.5 text-right">{m.expenses > 0 ? formatMoney(m.expenses) : "—"}</td>
+                  <td className={cn("px-4 py-1.5 text-right font-medium", m.net < 0 && "text-critical")}>{formatMoney(m.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </SectionCard>
       </div>
     </div>

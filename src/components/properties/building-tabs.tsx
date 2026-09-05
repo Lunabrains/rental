@@ -20,6 +20,7 @@ import { DocumentRow } from "@/components/units/documents-tab";
 import { useStore } from "@/lib/data/store-context";
 import { formatDate, formatMoney, formatMoneyCompact, formatMonth, formatMonthShort, formatPercent, labelize } from "@/lib/format";
 import {
+  getPortfolioComparison,
   getPropertyFinancials,
   getPropertyOverview,
   getPropertyTimeline,
@@ -267,6 +268,8 @@ export const expenseColumns: Column<ExpenseRow>[] = [
 export function BuildingFinancials({ propertyId }: { propertyId: string }) {
   const store = useStore();
   const fin = useMemo(() => getPropertyFinancials(store, propertyId), [store, propertyId]);
+  const cmp12 = useMemo(() => getPortfolioComparison(store, "12m").rows.find((r) => r.property.id === propertyId) ?? null, [store, propertyId]);
+  const cmpYtd = useMemo(() => getPortfolioComparison(store, "ytd").rows.find((r) => r.property.id === propertyId) ?? null, [store, propertyId]);
 
   return (
     <div className="space-y-5">
@@ -280,6 +283,40 @@ export function BuildingFinancials({ propertyId }: { propertyId: string }) {
       <SectionCard title="Income, expenses and NOI" description="Rent billed (accrual) against operating expenses, last 12 months. CapEx is tracked separately.">
         <FinancialsChart months={fin.months} />
       </SectionCard>
+
+      {cmp12 && cmpYtd && (
+        <SectionCard title="Profitability" description="Where the money goes — year to date and trailing 12 months" flush>
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-left text-xs text-muted-foreground">
+              <tr>
+                <th className="px-4 py-2 font-medium" />
+                <th className="px-4 py-2 text-right font-medium">Year to date</th>
+                <th className="px-4 py-2 text-right font-medium">Trailing 12 months</th>
+              </tr>
+            </thead>
+            <tbody className="tabular">
+              {([
+                ["Rent / income (billed)", cmpYtd.revenue, cmp12.revenue, "income"],
+                ["Rent collected", cmpYtd.collected, cmp12.collected, "income"],
+                ["Operating expenses", cmpYtd.operatingExpenses, cmp12.operatingExpenses, "cost"],
+                ["— of which maintenance", cmpYtd.maintenance, cmp12.maintenance, "sub"],
+                ["— of which utilities", cmpYtd.utilities, cmp12.utilities, "sub"],
+                ["NOI", cmpYtd.noi, cmp12.noi, "total"],
+                ["NOI margin", cmpYtd.margin, cmp12.margin, "pct"],
+                ["CapEx (excluded from NOI)", cmpYtd.capex, cmp12.capex, "capex"],
+                ["Vacancy loss estimate*", cmpYtd.vacancyLoss, cmp12.vacancyLoss, "estimate"],
+              ] as [string, number, number, string][]).map(([label, a, b, tone]) => (
+                <tr key={label} className={cn("border-t", tone === "total" && "bg-muted/30 font-semibold")}>
+                  <td className={cn("px-4 py-1.5", tone === "sub" && "pl-8 text-muted-foreground", (tone === "estimate" || tone === "capex") && "text-muted-foreground")}>{label}</td>
+                  <td className="px-4 py-1.5 text-right">{tone === "pct" ? formatPercent(a) : formatMoney(a)}</td>
+                  <td className="px-4 py-1.5 text-right">{tone === "pct" ? formatPercent(b) : formatMoney(b)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <p className="border-t px-4 py-2 text-[11px] text-muted-foreground">*Vacancy loss uses the reference rent (last contracted → market → asking) × days vacant today; it is an estimate and not subtracted from NOI.</p>
+        </SectionCard>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <SectionCard title="Budget vs actual" description="Current month and year lines" flush>

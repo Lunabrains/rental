@@ -9,6 +9,7 @@ import { ContractTermsDialog } from "@/components/flows/contract-terms-dialog";
 import { ReminderDialog, type ReminderTarget } from "@/components/flows/reminder-dialog";
 import { RenewalDecisionDialog } from "@/components/flows/renewal-decision-dialog";
 import { PaymentDetailDialog } from "@/components/payments/payment-detail-dialog";
+import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
 import { RecordPaymentDialog } from "@/components/flows/record-payment-dialog";
 import { RenewContractDialog } from "@/components/flows/renew-contract-dialog";
@@ -27,6 +28,7 @@ type Flow =
   | { kind: "contract_terms"; contractId: ID }
   | { kind: "reminder"; target: ReminderTarget }
   | { kind: "payment_detail"; paymentId: ID }
+  | { kind: "expense"; expenseId?: ID; prefill?: ExpensePrefill }
   | null;
 
 export interface ActionsContextValue {
@@ -44,6 +46,8 @@ export interface ActionsContextValue {
   /** Write flows — open the corresponding dialog. */
   recordPayment: (paymentId: ID) => void;
   openPayment: (paymentId: ID) => void;
+  addExpense: (prefill?: ExpensePrefill) => void;
+  editExpense: (expenseId: ID) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -99,6 +103,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
 
   const recordPayment = useCallback((paymentId: ID) => setFlow({ kind: "record_payment", paymentId }), []);
   const openPayment = useCallback((paymentId: ID) => setFlow({ kind: "payment_detail", paymentId }), []);
+  const addExpense = useCallback((prefill?: ExpensePrefill) => setFlow({ kind: "expense", prefill }), []);
+  const editExpense = useCallback((expenseId: ID) => setFlow({ kind: "expense", expenseId }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -148,14 +154,19 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return openContract(action.targetId);
         case "upload_document":
           return uploadDocument(action.targetId);
+        case "view_expense":
+        case "record_expense_payment":
+          return editExpense(action.targetId);
+        default:
+          return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense],
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -167,6 +178,7 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "add_tenant" && <AddTenantDialog key={flow.unitId} unitId={flow.unitId} onClose={closeFlow} />}
       {flow?.kind === "renewal_decision" && <RenewalDecisionDialog key={flow.contractId} contractId={flow.contractId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "contract_terms" && <ContractTermsDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
+      {flow?.kind === "expense" && <ExpenseDialog key={flow.expenseId ?? "new"} expenseId={flow.expenseId} prefill={flow.prefill} onClose={closeFlow} />}
       {flow?.kind === "payment_detail" && <PaymentDetailDialog key={flow.paymentId} paymentId={flow.paymentId} onClose={closeFlow} />}
       {flow?.kind === "reminder" && <ReminderDialog key={`${flow.target.entityType}-${flow.target.entityId}`} target={flow.target} onClose={closeFlow} />}
     </ActionsContext.Provider>
