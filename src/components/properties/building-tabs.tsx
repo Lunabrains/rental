@@ -384,7 +384,7 @@ const planColumns: Column<PlanRow>[] = [
 
 export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
   const store = useStore();
-  const { openWorkOrder, createWorkOrder } = useActions();
+  const { openWorkOrder, createWorkOrder, logService, addPlan } = useActions();
   const summary = useMemo(() => getMaintenanceSummary(store, propertyId), [store, propertyId]);
   const open = useMemo(() => getWorkOrders(store, { propertyId, status: "open" }), [store, propertyId]);
   const history = useMemo(() => getWorkOrders(store, { propertyId, status: "closed_all" }), [store, propertyId]);
@@ -405,9 +405,9 @@ export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
         </div>
       </SectionCard>
 
-      <SectionCard title="Preventive maintenance" description={`${plans.filter((p) => p.state === "overdue").length} overdue · ${plans.filter((p) => p.state === "due_soon").length} due soon`} flush>
+      <SectionCard title="Preventive maintenance" description={`${plans.filter((p) => p.state === "overdue").length} overdue · ${plans.filter((p) => p.state === "due_soon").length} due soon`} action={<Button size="sm" variant="outline" onClick={() => addPlan({ propertyId })}>New plan</Button>} flush>
         <div className="p-3">
-          <DataTable rows={plans} columns={planColumns} rowKey={(r) => r.plan.id} dense emptyTitle="No preventive plans" defaultSort={{ key: "next", dir: "asc" }} rowClassName={(r) => (r.state === "overdue" ? "bg-critical-muted/30" : undefined)} />
+          <DataTable rows={plans} columns={[...planColumns, { key: "act", header: "", sortable: false, noExport: true, cell: (r) => (r.state !== "paused" ? <span className="flex justify-end" onClick={(e) => e.stopPropagation()}><Button size="sm" variant={r.state === "overdue" || r.state === "due_soon" ? "default" : "outline"} className="h-7 px-2 text-xs" onClick={() => logService(r.plan.id)}>Log service</Button></span> : null) }]} rowKey={(r) => r.plan.id} dense emptyTitle="No preventive plans" defaultSort={{ key: "next", dir: "asc" }} rowClassName={(r) => (r.state === "overdue" ? "bg-critical-muted/30" : undefined)} />
         </div>
       </SectionCard>
 
@@ -436,6 +436,7 @@ const assetColumns: Column<AssetRow>[] = [
 
 export function BuildingAssets({ propertyId }: { propertyId: string }) {
   const store = useStore();
+  const { openAsset, addAsset } = useActions();
   const assets = useMemo(() => getAssets(store, { propertyId }), [store, propertyId]);
   const outOfService = assets.filter((a) => a.asset.status === "out_of_service").length;
   return (
@@ -446,7 +447,7 @@ export function BuildingAssets({ propertyId }: { propertyId: string }) {
         <KpiCard label="Service overdue" value={assets.filter((a) => a.serviceState === "overdue").length} tone={assets.some((a) => a.serviceState === "overdue") ? "critical" : "success"} sublabel={`${assets.filter((a) => a.serviceState === "due_soon").length} due soon`} />
         <KpiCard label="Maintenance spend" value={formatMoney(assets.reduce((n, a) => n + a.totalSpend, 0))} sublabel="All time, across assets" />
       </div>
-      <DataTable rows={assets} columns={assetColumns} rowKey={(r) => r.asset.id} emptyTitle="No assets registered" emptyIcon={ClipboardList} exportName={`assets-${propertyId}`} searchable={(r) => `${r.asset.name} ${r.asset.assetType} ${r.asset.manufacturer ?? ""} ${r.asset.serialNumber ?? ""}`} />
+      <DataTable rows={assets} columns={assetColumns} rowKey={(r) => r.asset.id} onRowClick={(r) => openAsset(r.asset.id)} toolbar={<Button size="sm" variant="outline" onClick={() => addAsset(propertyId)}>Register asset</Button>} emptyTitle="No assets registered" emptyIcon={ClipboardList} exportName={`assets-${propertyId}`} searchable={(r) => `${r.asset.name} ${r.asset.assetType} ${r.asset.manufacturer ?? ""} ${r.asset.serialNumber ?? ""}`} />
     </div>
   );
 }

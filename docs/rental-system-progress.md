@@ -11,7 +11,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 5 — expenses & profitability
 - [x] Phase 6 — budgets, deposits, utilities, common charges
 - [x] Phase 7 — maintenance work orders
-- [ ] Phase 8 — preventive maintenance & assets (QR)
+- [x] Phase 8 — preventive maintenance & assets (QR)
 - [ ] Phase 9 — suppliers
 - [ ] Phase 10 — inspections, move-in/out, keys, parking
 - [ ] Phase 11 — renovations / CapEx
@@ -81,3 +81,12 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Repeat-issue detection is rule-based in the alert engine (same unit/asset + category, N in the window) and surfaced on the board, the detail page and unit health.
 - Cross-links: building Maintenance tab, unit Maintenance tab and tenant Maintenance tab open details and create requests; alert actions (view / approve / create work order) wired.
 - Tests: `tests/maintenance.test.ts`.
+
+## Phase 8 — preventive maintenance & asset registry
+- Asset registry (`/assets`, `assets-page.tsx`): every piece of equipment with type, building/unit, status, next/last service, warranty, supplier, open work orders, lifetime spend and QR code; filters by service state, type, status, building; "Print QR labels" for the filtered set.
+- Asset page (`/assets/[id]`, `asset-page.tsx`): status and service KPIs, preventive plans with log-service / work-order / edit actions, work-order history, 12-month cost history, QR label, details, manuals & certificates (upload), timeline.
+- QR: stable code per asset (`qrCode`), rendered with `qrcode` (`qr-code.tsx`); the label encodes `/assets/scan/<code>`, which resolves inside the app (`asset-scan.tsx`) and redirects to the asset. Demo-only auth — the code carries no data.
+- Preventive maintenance (`/maintenance/preventive`, `preventive-page.tsx`): overdue / due soon / scheduled / paused states, 90-day service budget, log service, raise work order, edit; new plan dialog with recurrence, reminder window, supplier and estimated cost. Paused plans raise no alerts.
+- Dialogs (`asset-dialogs.tsx`): register/edit asset, add/edit plan, log service (rolls the plan forward, books the cost as an expense, undoable). Alert actions `view_asset`, `view_plan`, `schedule_service` wired.
+- Nav: Assets (top group), Maintenance › Preventive. Building Assets tab opens asset pages and registers assets; building Maintenance tab logs services and adds plans.
+- Tests: plan/service/asset commands already covered in `tests/maintenance.test.ts`.

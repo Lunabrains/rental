@@ -2,6 +2,8 @@ import {
   BarChart3,
   Bell,
   Building2,
+  CalendarClock,
+  ClipboardList,
   CreditCard,
   Receipt,
   FileText,
@@ -42,6 +44,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: startsWith("/dashboard") },
       { href: "/properties", label: "Properties", icon: Building2, match: startsWith("/properties") },
+      { href: "/assets", label: "Assets", icon: ClipboardList, match: startsWith("/assets") },
       { href: "/tenants", label: "Tenants", icon: Users, match: startsWith("/tenants") },
       { href: "/contracts", label: "Contracts", icon: FileText, match: startsWith("/contracts") },
       { href: "/alerts", label: "Alerts", icon: Bell, match: startsWith("/alerts") },
@@ -61,7 +64,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Maintenance",
-    items: [{ href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || p.startsWith("/maintenance/") }],
+    items: [
+      { href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || (p.startsWith("/maintenance/") && !p.startsWith("/maintenance/preventive")) },
+      { href: "/maintenance/preventive", label: "Preventive", icon: CalendarClock, match: startsWith("/maintenance/preventive") },
+    ],
   },
   {
     label: "Analytics",

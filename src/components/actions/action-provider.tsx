@@ -10,6 +10,7 @@ import { ReminderDialog, type ReminderTarget } from "@/components/flows/reminder
 import { RenewalDecisionDialog } from "@/components/flows/renewal-decision-dialog";
 import { PaymentDetailDialog } from "@/components/payments/payment-detail-dialog";
 import { DepositDialog } from "@/components/finance/deposit-dialog";
+import { AssetDialog, LogServiceDialog, PlanDialog } from "@/components/maintenance/asset-dialogs";
 import { WorkOrderDialog, WorkOrderStatusDialog, type WorkOrderPrefill } from "@/components/maintenance/work-order-dialogs";
 import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
@@ -34,6 +35,9 @@ type Flow =
   | { kind: "deposit"; depositId: ID }
   | { kind: "work_order"; workOrderId?: ID; prefill?: WorkOrderPrefill }
   | { kind: "work_order_status"; workOrderId: ID; initial?: WorkOrderStatus }
+  | { kind: "asset"; assetId?: ID; propertyId?: ID | null }
+  | { kind: "plan"; planId?: ID; defaults?: { propertyId?: ID | null; assetId?: ID | null } }
+  | { kind: "log_service"; planId: ID }
   | null;
 
 export interface ActionsContextValue {
@@ -58,6 +62,12 @@ export interface ActionsContextValue {
   editWorkOrder: (workOrderId: ID) => void;
   openWorkOrder: (workOrderId: ID) => void;
   workOrderStatus: (workOrderId: ID, initial?: WorkOrderStatus) => void;
+  openAsset: (assetId: ID) => void;
+  addAsset: (propertyId?: ID | null) => void;
+  editAsset: (assetId: ID) => void;
+  addPlan: (defaults?: { propertyId?: ID | null; assetId?: ID | null }) => void;
+  editPlan: (planId: ID) => void;
+  logService: (planId: ID) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -120,6 +130,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const editWorkOrder = useCallback((workOrderId: ID) => setFlow({ kind: "work_order", workOrderId }), []);
   const openWorkOrder = useCallback((workOrderId: ID) => router.push(`/maintenance/${workOrderId}`), [router]);
   const workOrderStatus = useCallback((workOrderId: ID, initial?: WorkOrderStatus) => setFlow({ kind: "work_order_status", workOrderId, initial }), []);
+  const openAsset = useCallback((assetId: ID) => router.push(`/assets/${assetId}`), [router]);
+  const addAsset = useCallback((propertyId?: ID | null) => setFlow({ kind: "asset", propertyId }), []);
+  const editAsset = useCallback((assetId: ID) => setFlow({ kind: "asset", assetId }), []);
+  const addPlan = useCallback((defaults?: { propertyId?: ID | null; assetId?: ID | null }) => setFlow({ kind: "plan", defaults }), []);
+  const editPlan = useCallback((planId: ID) => setFlow({ kind: "plan", planId }), []);
+  const logService = useCallback((planId: ID) => setFlow({ kind: "log_service", planId }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -177,6 +193,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return openDeposit(action.targetId);
         case "view_work_order":
           return openWorkOrder(action.targetId);
+        case "view_asset":
+          return openAsset(action.targetId);
+        case "view_plan":
+          return router.push(`/maintenance/preventive?state=all`);
+        case "schedule_service":
+          return logService(action.targetId);
         case "approve_work_order":
           return workOrderStatus(action.targetId, "in_progress");
         case "create_work_order": {
@@ -198,12 +220,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, router, store],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, router, store],
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -216,6 +238,9 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "renewal_decision" && <RenewalDecisionDialog key={flow.contractId} contractId={flow.contractId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "contract_terms" && <ContractTermsDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
       {flow?.kind === "work_order" && <WorkOrderDialog key={flow.workOrderId ?? "new"} workOrderId={flow.workOrderId} prefill={flow.prefill} onClose={closeFlow} />}
+      {flow?.kind === "asset" && <AssetDialog key={flow.assetId ?? "new"} assetId={flow.assetId} defaultPropertyId={flow.propertyId} onClose={closeFlow} />}
+      {flow?.kind === "plan" && <PlanDialog key={flow.planId ?? "new"} planId={flow.planId} defaults={flow.defaults} onClose={closeFlow} />}
+      {flow?.kind === "log_service" && <LogServiceDialog key={flow.planId} planId={flow.planId} onClose={closeFlow} />}
       {flow?.kind === "work_order_status" && <WorkOrderStatusDialog key={flow.workOrderId} workOrderId={flow.workOrderId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "deposit" && <DepositDialog key={flow.depositId} depositId={flow.depositId} onClose={closeFlow} />}
       {flow?.kind === "expense" && <ExpenseDialog key={flow.expenseId ?? "new"} expenseId={flow.expenseId} prefill={flow.prefill} onClose={closeFlow} />}
