@@ -8,6 +8,7 @@ export * from "./core";
 export * from "./writes";
 export * from "./operations";
 export * from "./contracts";
+export * from "./payments";
 
 /* -------------------------------- Import ---------------------------------- */
 

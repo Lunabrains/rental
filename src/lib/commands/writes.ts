@@ -6,7 +6,7 @@ import { formatMoney, formatMonth } from "@/lib/format";
 import { generateSchedule } from "@/lib/import/apply";
 import type { Contract, ID, IdDocumentType, ISODate, Payment, PaymentMethod, Store, StoredDocument, Tenant, Unit } from "@/types";
 
-import { appendActivity, finish, replaceById, type Command } from "./core";
+import { appendActivity, appendAudit, finish, removeAudit, replaceById, type Command } from "./core";
 
 /**
  * The user-facing write flows. Every one returns an `undo` so the toast can
@@ -81,7 +81,17 @@ export function recordPayment(input: RecordPaymentInput): Command<RecordPaymentR
       deleted: false,
     };
 
-    const next: Store = { ...store, payments: replaceById(store.payments, payment), documents: [...store.documents, receipt] };
+    const audited = appendAudit({ ...store, payments: replaceById(store.payments, payment), documents: [...store.documents, receipt] }, {
+      action: "update",
+      entityType: "payment",
+      entityId: prev.id,
+      entityLabel: `${tenantName} · ${formatMonth(prev.periodMonth)}`,
+      field: "amountPaid",
+      previousValue: prev.amountPaid,
+      newValue: payment.amountPaid,
+      metadata: { method: input.method, reference, date: input.date },
+    });
+    const next: Store = audited.store;
     const { store: logged, entry } = appendActivity(next, {
       type: "payment_recorded",
       message: `Payment received — ${formatMoney(amount)} from ${tenantName} for ${formatMonth(prev.periodMonth)}${partial ? ` (partial, ${formatMoney(remaining)} outstanding)` : ""}`,
@@ -95,12 +105,17 @@ export function recordPayment(input: RecordPaymentInput): Command<RecordPaymentR
     });
 
     const undo = (s: Store): Store =>
-      recompute({
-        ...s,
-        payments: replaceById(s.payments, prev),
-        documents: s.documents.filter((d) => d.id !== receipt.id),
-        activity: s.activity.filter((a) => a.id !== entry.id),
-      });
+      recompute(
+        removeAudit(
+          {
+            ...s,
+            payments: replaceById(s.payments, prev),
+            documents: s.documents.filter((d) => d.id !== receipt.id),
+            activity: s.activity.filter((a) => a.id !== entry.id),
+          },
+          [audited.entry.id],
+        ),
+      );
 
     return finish(logged, { payment, receipt, tenantName, partial, remaining }, undo);
   };

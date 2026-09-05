@@ -7,7 +7,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 1 — data foundation & shared infrastructure
 - [x] Phase 2 — buildings & unit 360°
 - [x] Phase 3 — tenant 360° & contract intelligence
-- [ ] Phase 4 — rent roll & payment intelligence
+- [x] Phase 4 — rent roll & payment intelligence
 - [ ] Phase 5 — expenses & profitability
 - [ ] Phase 6 — budgets, deposits, utilities, common charges
 - [ ] Phase 7 — maintenance work orders
@@ -52,3 +52,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Expiring-contracts screen: Contracts › Renewals (`src/components/contracts/renewals-board.tsx`) with tenant, building, unit, rent, expiry, days left, reliability, renewal status, proposed rent, notes and one-click renew / do-not-renew / awaiting / reminder / open tenant / run renewal.
 - Queries: `src/lib/queries/tenants.ts` (`getTenant360`, `getRenewals`, `suggestFromClause`).
 - Unresolved: historical contract "versions" are the renewal chain (no separate version table); reminders are the follow-up/task mechanism.
+
+## Phase 4 — rent roll & payment intelligence
+- Rent roll (`/finance/rent-roll`, `src/components/finance/rent-roll-page.tsx`, `getRentRoll`): one row per rentable unit for any month — building, unit, tenant, rent, due date, amount due, paid, outstanding, status, days overdue, deposit, contract expiry; filters for status, arrears age (30/60/90+), occupancy, expiring contracts and building; summary header (expected, collected, outstanding, collection rate, overdue tenants); month navigation; CSV/Excel export; totals row.
+- Payments dashboard (Payments › Overview, `payments-dashboard.tsx`, `getPaymentsDashboard`): expected vs collected this month, cash received, outstanding, partial payments, arrears aging buckets, 12-month collection trend with rate, tenants requiring attention (reasons, reliability, record / remind).
+- Payment detail dialog (`payment-detail-dialog.tsx`, `getPaymentDetail`): due period, amounts, method, reference, notes, receipts, ledger context, audit history; edit details (audited), waive balance with a reason (confirmed, reversible), record payment. `recordPayment` now writes an audit entry.
+- Commands: `updatePayment`, `waivePayment`, `unwaivePayment` (`src/lib/commands/payments.ts`); Finance navigation group.
+- Tests: `tests/finance.test.ts` (rent roll rows/filters/quarterly billing, dashboard, record/waive/validation).

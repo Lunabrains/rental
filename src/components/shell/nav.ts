@@ -3,6 +3,7 @@ import {
   Bell,
   Building2,
   CreditCard,
+  Receipt,
   FileText,
   FolderOpen,
   LayoutDashboard,
@@ -36,8 +37,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/properties", label: "Properties", icon: Building2, match: startsWith("/properties") },
       { href: "/tenants", label: "Tenants", icon: Users, match: startsWith("/tenants") },
       { href: "/contracts", label: "Contracts", icon: FileText, match: startsWith("/contracts") },
-      { href: "/payments", label: "Payments", icon: CreditCard, match: startsWith("/payments") },
       { href: "/alerts", label: "Alerts", icon: Bell, match: startsWith("/alerts") },
+    ],
+  },
+  {
+    label: "Finance",
+    items: [
+      { href: "/finance/rent-roll", label: "Rent roll", icon: Receipt, match: startsWith("/finance/rent-roll") },
+      { href: "/payments", label: "Payments", icon: CreditCard, match: startsWith("/payments") },
     ],
   },
   {
