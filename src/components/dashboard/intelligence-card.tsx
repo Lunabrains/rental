@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { ChevronDown, Sparkles } from "lucide-react";
+import { ArrowRight, ChevronDown, Sparkles } from "lucide-react";
 
 import type { IntelligenceBrief } from "@/lib/derived/intelligence";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,11 @@ export function IntelligenceCard({ brief }: { brief: IntelligenceBrief }) {
         </span>
         <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-180")} />
       </button>
+      <div className="flex items-center justify-end border-t px-4 py-1.5">
+        <Link href="/briefing" className="inline-flex items-center gap-1 text-xs font-medium text-brand hover:underline">
+          Today&apos;s full briefing <ArrowRight className="size-3" />
+        </Link>
+      </div>
       {open && (
         <div className="border-t px-4 py-4">
           <div className="grid gap-4 lg:grid-cols-[1fr_minmax(16rem,20rem)]">

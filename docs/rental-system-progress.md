@@ -17,7 +17,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 11 — renovations / CapEx
 - [x] Phase 12 — smart alerts engine
 - [x] Phase 13 — cash flow & forecasting
-- [ ] Phase 14 — daily owner briefing
+- [x] Phase 14 — daily owner briefing
 - [ ] Phase 15 — AI document intelligence
 - [ ] Phase 16 — AI assistant 2.0
 - [ ] Phase 17 — analytics & reporting
@@ -127,3 +127,8 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Query (`src/lib/queries/forecast.ts`): `getCashFlowForecast` builds the next 1–12 months from records only — open rent instalments by due date (overdue lands in the first month), rent flagged "at risk" when the contract ends within 60 days without a renewal, unpaid invoices by due date, recurring expense patterns projected forward (skipped when the month is already booked), preventive services at their estimated cost, remaining budget of live projects spread to the target end (CapEx), and deposits due back when tenancies end. Each line carries a reference to its record for drill-down and a `projected` flag. Totals include a trailing six-month collection rate and the "likely collected" figure. `getVacancyCost` prices empty units (days empty, reference rent, lost so far, per-month run rate) and lists contracts ending within 60 days without a renewal.
 - UI (`/finance/cash-flow`, `cashflow-page.tsx`): KPIs (expected in / likely, going out with CapEx share, net with the first month the balance dips below zero, rent at risk), horizon chips (3 / 6 / 12 months), building filter, an opening-balance field, a stacked in/out chart with the running balance, a month-by-month breakdown that expands into every line (click opens the payment, expense, project, deposit or logs the service), vacancy cost table, and rent-at-risk list with Decide / Renew actions.
 - Labelled as an estimate throughout; nothing is invented and no external data is used. Nav: Finance › Cash flow. Tests: `tests/forecast.test.ts`.
+
+## Phase 14 — daily owner briefing
+- `src/lib/derived/briefing.ts`: `getDailyBriefing` assembles five sections from the live queries — Decide today (quotes awaiting approval, renewal decisions, deposits to settle, projects over budget / behind schedule), Money (overdue rent with days late, rent due today, supplier invoices due this week), Today & this week (move-ins / move-outs with step progress, inspections, services due or overdue, contract ends, instalments due), Operations (emergencies, work orders open too long, assets out of service, lost keys, long vacancies) and Good news (money received, work orders completed, renewals agreed, tenancies starting, services done). Each item carries `AlertAction`s so the same handlers as alerts run them. Headline, plain-language narrative (portfolio intelligence + today's counts + collection and 30-day net), and the numbers strip. `briefingAsText` renders it for copy / print.
+- UI: `/briefing` (`src/components/briefing/briefing-page.tsx`) with Copy as text and Print; the dashboard intelligence card links to it. Nav: Daily briefing (top group).
+- Tests (`tests/briefing.test.ts`): the seed produces the scripted items in the right sections, every action targets an existing record, the text export contains every non-empty section.

@@ -17,6 +17,7 @@ import {
   Layers,
   LayoutDashboard,
   LineChart,
+  Newspaper,
   PiggyBank,
   Settings,
   Sparkles,
@@ -49,6 +50,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: null,
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, match: startsWith("/dashboard") },
+      { href: "/briefing", label: "Daily briefing", icon: Newspaper, match: startsWith("/briefing") },
       { href: "/properties", label: "Properties", icon: Building2, match: startsWith("/properties") },
       { href: "/assets", label: "Assets", icon: ClipboardList, match: startsWith("/assets") },
       { href: "/tenants", label: "Tenants", icon: Users, match: startsWith("/tenants") },
