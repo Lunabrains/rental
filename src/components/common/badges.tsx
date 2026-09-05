@@ -5,12 +5,14 @@ import type { AlertSeverity, ContractStatus, PaymentStatus, UnitStatus } from "@
 const SEVERITY_DOT: Record<AlertSeverity, string> = {
   critical: "bg-critical",
   warning: "bg-warning",
+  attention: "bg-warning/60",
   info: "bg-info",
 };
 
 const SEVERITY_BADGE: Record<AlertSeverity, string> = {
   critical: "bg-critical-muted text-critical border-critical/20",
   warning: "bg-warning-muted text-warning-foreground border-warning/30",
+  attention: "bg-warning-muted/60 text-warning-foreground border-warning/20",
   info: "bg-info-muted text-info border-info/20",
 };
 
@@ -45,6 +47,8 @@ const UNIT_STATUS: Record<UnitStatus, string> = {
   rented: "bg-unit-rented text-unit-rented-foreground border-unit-rented-border",
   reserved: "bg-info-muted text-info border-info/20",
   maintenance: "bg-warning-muted text-warning-foreground border-warning/30",
+  renovation: "bg-warning-muted text-warning-foreground border-warning/30",
+  unavailable: "bg-muted text-muted-foreground border-border",
 };
 
 export function UnitStatusBadge({ status, className }: { status: UnitStatus; className?: string }) {
@@ -69,6 +73,7 @@ const PAYMENT_STATUS: Record<PaymentStatus, string> = {
   overdue: "bg-critical-muted text-critical border-critical/20",
   due: "bg-info-muted text-info border-info/20",
   scheduled: "bg-muted text-muted-foreground border-border",
+  waived: "bg-muted text-muted-foreground border-border line-through",
 };
 
 export function PaymentStatusBadge({

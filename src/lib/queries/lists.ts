@@ -160,7 +160,7 @@ export interface AlertFilter {
   includeDismissed?: boolean;
 }
 
-const SEVERITY_RANK: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 };
+const SEVERITY_RANK: Record<AlertSeverity, number> = { critical: 0, warning: 1, attention: 2, info: 3 };
 
 export function getAlerts(store: Store, filter: AlertFilter = {}): Alert[] {
   return store.alerts

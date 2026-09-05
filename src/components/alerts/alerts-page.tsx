@@ -55,13 +55,13 @@ export function AlertsPage() {
   );
 
   const bySeverity = useMemo(() => {
-    const groups: Record<AlertSeverity, Alert[]> = { critical: [], warning: [], info: [] };
+    const groups: Record<AlertSeverity, Alert[]> = { critical: [], warning: [], attention: [], info: [] };
     for (const a of filtered) groups[a.severity].push(a);
     return groups;
   }, [filtered]);
 
   const counts = useMemo(() => {
-    const c: Record<SeverityFilter, number> = { all: all.length, critical: 0, warning: 0, info: 0 };
+    const c: Record<SeverityFilter, number> = { all: all.length, critical: 0, warning: 0, attention: 0, info: 0 };
     for (const a of all) c[a.severity]++;
     return c;
   }, [all]);
@@ -100,6 +100,7 @@ export function AlertsPage() {
             { value: "all", label: "All", count: counts.all },
             { value: "critical", label: "Critical", count: counts.critical },
             { value: "warning", label: "Warning", count: counts.warning },
+            { value: "attention", label: "Attention", count: counts.attention },
             { value: "info", label: "Info", count: counts.info },
           ]}
         />

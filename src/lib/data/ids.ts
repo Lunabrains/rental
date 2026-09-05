@@ -20,6 +20,13 @@ export function shortHash(value: string): string {
   return h.toString(36).padStart(7, "0").slice(-6);
 }
 
+let seq = 0;
+/** Unique id for records created in-session (not from an import key). */
+export function freshId(prefix: string): ID {
+  seq++;
+  return `${prefix}-${Date.now().toString(36)}${seq.toString(36)}`;
+}
+
 export const ids = {
   property: (name: string): ID => slugify(name),
   unit: (propertyId: ID, unitNumber: string): ID => `${propertyId}-${slugify(unitNumber)}`,
@@ -29,6 +36,22 @@ export const ids = {
   document: (owner: ID, kind: string, fileName: string): ID => `d-${owner}-${kind}-${shortHash(fileName)}`,
   activity: (seq: number): ID => `a-${Date.now().toString(36)}-${seq.toString(36)}`,
   alert: (type: string, entityId: ID): string => `${type}:${entityId}`,
+  supplier: (name: string): ID => `s-${slugify(name)}`,
+  asset: (propertyId: ID, name: string): ID => `as-${propertyId}-${slugify(name)}`,
+  expense: (propertyId: ID, date: string, description: string): ID => `e-${propertyId}-${date}-${shortHash(description)}`,
+  budget: (propertyId: ID, period: string, category: string): ID => `b-${propertyId}-${period}-${category}`,
+  deposit: (contractId: ID): ID => `dep-${contractId}`,
+  workOrder: (number: string): ID => `wo-${slugify(number)}`,
+  plan: (propertyId: ID, type: string, assetId: ID | null): ID => `pm-${assetId ?? propertyId}-${slugify(type)}`,
+  meter: (meterNumber: string): ID => `m-${slugify(meterNumber)}`,
+  reading: (meterId: ID, date: string): ID => `r-${meterId}-${date}`,
+  charge: (propertyId: ID, period: string, category: string): ID => `cc-${propertyId}-${period}-${slugify(category)}`,
+  inspection: (propertyId: ID, unitId: ID | null, type: string, date: string): ID => `i-${unitId ?? propertyId}-${type}-${date}`,
+  renovation: (propertyId: ID, title: string): ID => `rn-${propertyId}-${slugify(title)}`,
+  parking: (propertyId: ID, space: string): ID => `pk-${propertyId}-${slugify(space)}`,
+  key: (propertyId: ID, identifier: string): ID => `k-${propertyId}-${slugify(identifier)}`,
+  reminder: (): ID => freshId("rem"),
+  audit: (): ID => freshId("au"),
 };
 
 /** Normalise a phone number to digits with a leading + so keys compare equal. */

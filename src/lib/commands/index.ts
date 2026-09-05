@@ -6,6 +6,7 @@ import { finish, logActivity, type Command } from "./core";
 
 export * from "./core";
 export * from "./writes";
+export * from "./operations";
 
 /* -------------------------------- Import ---------------------------------- */
 

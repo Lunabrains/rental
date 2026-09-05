@@ -4,7 +4,7 @@ Master plan: `CLAUDE_RENTAL_SYSTEM_IMPLEMENTATION_PLAN.md` (Property Intelligenc
 Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` · `npm run build`.
 
 - [x] Phase 0 — repository audit (`docs/implementation-notes.md`)
-- [ ] Phase 1 — data foundation & shared infrastructure
+- [x] Phase 1 — data foundation & shared infrastructure
 - [ ] Phase 2 — buildings & unit 360°
 - [ ] Phase 3 — tenant 360° & contract intelligence
 - [ ] Phase 4 — rent roll & payment intelligence
@@ -26,3 +26,15 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 ## Phase 0 — repository audit
 - Files: `docs/implementation-notes.md`
 - Unresolved: none — existing app runs, production build succeeds.
+
+## Phase 1 — data foundation & shared infrastructure
+- Domain model (`src/types/index.ts`): expenses, budgets, security deposits, work orders, preventive plans, assets (QR ids), suppliers, meters/readings, common charges, inspections (+items), renovations (+tasks), parking, keys, reminders, audit log; unit statuses `renovation`/`unavailable`, market rent, condition; contract payment frequency, increase clause, special terms, renewal decision/status, proposed rent; payment `waived`; document categories + links to every entity + soft delete; alert `attention` severity, due date, resolved flag, origin (rule / ai / manual).
+- Store & indexes (`src/lib/data/store.ts`), id helpers, thresholds for every new rule.
+- Derivation (`src/lib/derived/`): `occupancy.ts` (shared), `metrics.ts` (§5 formulas, §6 tenant reliability, §7 building health, §8 unit health), `recompute.ts` (renewal status, waived rent, deposits, expenses, readings, asset service dates, renovation cost/progress), `alerts.ts` (full rules engine incl. maintenance, preventive, finance, inspection, renovation, reminders — Phase 12 rules brought forward).
+- Importer: 14 new tabs (Suppliers, Assets, WorkOrders, PreventivePlans, Expenses, Budgets, Deposits, Meters, Readings, CommonCharges, Inspections, Renovations, Parking, Keys), extended Properties/Units/Contracts/Documents columns, idempotent keys, validation rules (§14: negative amounts, backwards dates, refund > held, decreasing readings), auto-created deposit per contract, renewal-chain linking.
+- Seed (`scripts/generate-seed.ts`): suppliers with varied performance, assets + plans (overdue/due/out-of-service), 65 work orders incl. a repeat plumbing issue and an emergency, 500 expenses (recurring + invoices + CapEx), budgets with scripted over-budget lines, meters/readings, common charges, inspections with a failed item, renovations (over budget + delayed), parking, keys, certificates/insurance documents.
+- Read queries (`src/lib/queries/operations.ts`): expenses, budgets, deposits, work orders (+details, summary), assets (+details, QR lookup), suppliers (+transparent performance score), plans, meters, charges, inspections, renovations, parking, keys, reminders, audit.
+- Commands: audit helper (`appendAudit`, `auditChanges`), documents (add / soft delete / restore), reminders, alert resolve.
+- Shared UI: `StatusBadge`, `Timeline`, entity selects, `AttachmentUploader`, `DataTable` (sort / search / paging / CSV / Excel), `ScoreBadge`/`ScoreBreakdown`, export helpers (`src/lib/export.ts`).
+- Tests: `npm test` (node:test + tsx) — 40 tests over formulas, derivation, alerts, schedules, allocation, import round-trips and validation.
+- Unresolved: uploaded files live as object URLs for the session only (no storage backend); AI tool layer not yet extended (Phase 16).

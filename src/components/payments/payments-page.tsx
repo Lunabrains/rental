@@ -17,7 +17,7 @@ import { getPayments } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { PaymentStatus } from "@/types";
 
-type StatusFilter = "open" | "overdue" | "partial" | "due" | "scheduled" | "paid" | "all";
+type StatusFilter = "open" | "overdue" | "partial" | "due" | "scheduled" | "paid" | "waived" | "all";
 
 const OPEN: PaymentStatus[] = ["overdue", "partial", "due"];
 const PAGE = 100;
@@ -47,7 +47,7 @@ export function PaymentsPage() {
 
   const rows = useMemo(() => getPayments(store), [store]);
   const counts = useMemo(() => {
-    const c: Record<StatusFilter, number> = { open: 0, overdue: 0, partial: 0, due: 0, scheduled: 0, paid: 0, all: rows.length };
+    const c: Record<StatusFilter, number> = { open: 0, overdue: 0, partial: 0, due: 0, scheduled: 0, paid: 0, waived: 0, all: rows.length };
     for (const r of rows) {
       c[r.payment.status]++;
       if (OPEN.includes(r.payment.status)) c.open++;

@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node --import tsx --test \"tests/**/*.test.ts\"",
+    "seed": "tsx scripts/generate-seed.ts",
+    "check:seed": "tsx scripts/check-seed.ts",
+    "check:assistant": "tsx scripts/check-assistant.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

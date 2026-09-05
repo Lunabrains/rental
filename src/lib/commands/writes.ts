@@ -66,10 +66,19 @@ export function recordPayment(input: RecordPaymentInput): Command<RecordPaymentR
       unitId: prev.unitId,
       propertyId: prev.propertyId,
       paymentId: prev.id,
+      expenseId: null,
+      workOrderId: null,
+      assetId: null,
+      supplierId: null,
+      inspectionId: null,
+      renovationId: null,
+      category: "receipt",
       issuedDate: input.date,
       expiryDate: null,
       uploadedAt: input.date,
       generated: true,
+      dataUrl: null,
+      deleted: false,
     };
 
     const next: Store = { ...store, payments: replaceById(store.payments, payment), documents: [...store.documents, receipt] };
@@ -157,11 +166,18 @@ export function renewContract(input: RenewContractInput): Command<RenewContractR
       monthlyRent: input.rent,
       deposit: input.deposit,
       paymentDay: Math.min(28, Math.max(1, input.paymentDay)),
+      paymentFrequency: old.paymentFrequency,
       paymentMethod: input.method,
       status: "active",
       moveOutDate: null,
       renewedFromContractId: old.id,
       renewedToContractId: null,
+      rentIncreaseClause: old.rentIncreaseClause,
+      specialTerms: old.specialTerms,
+      renewalDecision: null,
+      renewalStatus: "not_due",
+      proposedRent: null,
+      renewalNotes: null,
       notes: null,
       createdAt: base,
     };
@@ -349,11 +365,18 @@ export function addTenantToUnit(input: AddTenantInput): Command<AddTenantResult>
       monthlyRent: input.terms.rent,
       deposit: input.terms.deposit,
       paymentDay: Math.min(28, Math.max(1, input.terms.paymentDay)),
+      paymentFrequency: "monthly",
       paymentMethod: input.terms.method,
       status: "active",
       moveOutDate: null,
       renewedFromContractId: null,
       renewedToContractId: null,
+      rentIncreaseClause: null,
+      specialTerms: null,
+      renewalDecision: null,
+      renewalStatus: "not_due",
+      proposedRent: null,
+      renewalNotes: null,
       notes: null,
       createdAt: base,
     };
@@ -392,7 +415,7 @@ export function addTenantToUnit(input: AddTenantInput): Command<AddTenantResult>
 
 /* ------------------------------ Basic edits ------------------------------- */
 
-export type UnitPatch = Partial<Pick<Unit, "askingRent" | "askingDeposit" | "bedrooms" | "bathrooms" | "sizeSqm" | "furnished" | "notes" | "status">>;
+export type UnitPatch = Partial<Pick<Unit, "askingRent" | "askingDeposit" | "bedrooms" | "bathrooms" | "sizeSqm" | "furnished" | "notes" | "status" | "marketRent" | "condition">>;
 
 export function updateUnit(unitId: ID, patch: UnitPatch): Command<Unit> {
   return (store) => {
