@@ -9,7 +9,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 3 — tenant 360° & contract intelligence
 - [x] Phase 4 — rent roll & payment intelligence
 - [x] Phase 5 — expenses & profitability
-- [ ] Phase 6 — budgets, deposits, utilities, common charges
+- [x] Phase 6 — budgets, deposits, utilities, common charges
 - [ ] Phase 7 — maintenance work orders
 - [ ] Phase 8 — preventive maintenance & assets (QR)
 - [ ] Phase 9 — suppliers
@@ -66,3 +66,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Unit profitability: unit page › Profitability tab (`getUnitProfitability`): rent billed/collected, attributed expenses, work-order costs, CapEx apart, vacancy loss, net contribution, month by month.
 - Portfolio comparison (`/analytics/performance`, `getPortfolioComparison`, `getUnitRankings`): revenue, collection, expenses, maintenance, NOI, margin, NOI per unit, outstanding, vacancy loss, health; unit ranking by net contribution.
 - Tests: `tests/expenses.test.ts`.
+
+## Phase 6 — budgets, deposits, utilities, common charges
+- Budgets (`/finance/budgets`): monthly or yearly lines per building and category with actual, difference, variance %, usage bar and over-budget flag; set/edit/remove lines; "spend without a budget line" prompts. Commands `setBudget` / `deleteBudget`.
+- Security deposits (`/finance/deposits`, `deposit-dialog.tsx`): received / held / deductions / settlement / refund; move-out settlement UI shows outstanding rent and move-out inspection findings; refunds above the amount held need an explicit, audited override. Commands `receiveDeposit`, `addDeduction`, `removeDeduction`, `settleDeposit`; alert actions open the dialog.
+- Utilities (`/finance/utilities`): meters (building or unit level), readings with consumption and cost, decreasing readings refused unless a reset is declared, optional booking of the amount as a utility expense. Commands `addMeter`, `recordReading`.
+- Common charges (`/finance/charges`): create a charge for a month with a configurable allocation (equal / by area / by bedrooms), per-unit shares with paid toggles, collection progress. Commands `addCommonCharge`, `setAllocationPaid`, `deleteCommonCharge`.
+- Finance navigation now: Rent roll, Payments, Expenses, Budgets, Deposits, Utilities, Common charges. Tests in `tests/finance-ops.test.ts`.
