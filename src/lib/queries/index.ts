@@ -14,3 +14,4 @@ export * from "./tenants";
 export * from "./finance";
 export * from "./profitability";
 export * from "./inspections";
+export * from "./renovations";

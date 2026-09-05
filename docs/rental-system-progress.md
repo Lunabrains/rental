@@ -14,7 +14,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 8 — preventive maintenance & assets (QR)
 - [x] Phase 9 — suppliers
 - [x] Phase 10 — inspections, move-in/out, keys, parking
-- [ ] Phase 11 — renovations / CapEx
+- [x] Phase 11 — renovations / CapEx
 - [ ] Phase 12 — smart alerts engine
 - [ ] Phase 13 — cash flow & forecasting
 - [ ] Phase 14 — daily owner briefing
@@ -106,3 +106,11 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - UI: `/inspections` board (KPIs, move checklists with step progress, filters, table), `/inspections/[id]` (grouped checklist with pass / attention / fail toggles, notes, add / remove items, raise or open the work order per item, comparison with the reference report, move-out steps: keys back, closing readings via the reading dialog, parking, deposit settlement; photos), `/keys` register (issue / return / lost / found), `/parking` register (assign / release). Dialogs in `src/components/operations/*`.
 - Cross-links: unit Inspections tab opens inspection pages and schedules annual / move-out checklists; unit Keys & parking card links to the registers; tenant page offers "Schedule move-out" / opens the existing checklist; building Maintenance tab lists inspections; alert actions `view_inspection`, `schedule_inspection`, `view_keys` wired.
 - Nav: Operations › Inspections, Keys, Parking. Tests: `tests/operations.test.ts`.
+
+## Phase 11 — renovations / CapEx
+- Commands (`src/lib/commands/renovations.ts`): `createRenovation` (status from the start date, optional "renovation" flag on a vacant unit, task list), `updateRenovation`, `setRenovationStatus` (guarded transitions; cancelling frees the unit, resuming flags it), `completeRenovation` (actual end date, unit condition and new asking rent, unit released), `addRenovationTask` / `toggleRenovationTask` / `removeRenovationTask` (progress follows the task list). Audited and undoable.
+- Queries (`src/lib/queries/renovations.ts`): `getRenovationImpact` (rent before / after or projected asking rent, monthly and annual uplift, payback months, annual return, empty days and rent forgone during the works, schedule slip, cost per unit for building projects), `getCapexSummary` (live / planned / completed, over-budget and delayed counts, committed vs spent, CapEx this year vs last, by building, by year).
+- CapEx stays out of NOI: costs are booked as `capex` expenses linked by `renovationId` and roll up into the project's actual cost (derived in `recompute`).
+- UI: `/renovations` (KPIs, by-building table, status chips, project table with progress bars and variance), `/renovations/[id]` (budget vs spent, progress, schedule, return; tasks checklist; CapEx expenses with "Book cost"; unit impact card; contractor; before / after photos; history; Start / Hold / Resume / Complete / Cancel). Dialogs in `renovation-dialogs.tsx`.
+- Cross-links: unit Maintenance tab lists projects and offers "Plan renovation"; building overview links live projects; alert action `view_renovation` wired. Nav: Operations › Renovations.
+- Tests: `tests/renovations.test.ts`.

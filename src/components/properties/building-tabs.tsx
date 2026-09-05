@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, FileText, Wrench } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -175,7 +176,7 @@ export function BuildingOverview({ summary }: { summary: PropertySummary }) {
                 {o.liveRenovations.map((r) => (
                   <li key={r.renovation.id} className="text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{r.renovation.title}</span>
+                      <Link href={`/renovations/${r.renovation.id}`} className="font-medium hover:underline">{r.renovation.title}</Link>
                       <StatusBadge value={r.renovation.status} />
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">

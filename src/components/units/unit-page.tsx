@@ -392,7 +392,7 @@ function ProfitabilityTab({ unitId }: { unitId: string }) {
 /* -------------------------------- Maintenance ----------------------------- */
 
 function MaintenanceTab({ u }: { u: Unit360 }) {
-  const { openWorkOrder, createWorkOrder } = useActions();
+  const { openWorkOrder, createWorkOrder, openRenovation, createRenovation } = useActions();
   const open = u.workOrders.filter((w) => w.isOpen);
   const repeats = u.alerts.filter((a) => a.type === "maintenance_repeat_issue").length;
   return (
@@ -415,23 +415,23 @@ function MaintenanceTab({ u }: { u: Unit360 }) {
           </div>
         </SectionCard>
       )}
-      {u.renovations.length > 0 && (
-        <SectionCard title="Renovations">
+      <SectionCard title="Renovations" description={u.renovations.length === 0 ? "No projects on this unit" : undefined} action={<Button size="sm" variant="outline" onClick={() => createRenovation({ unitId: u.unit.id, propertyId: u.property.id })}>Plan renovation</Button>}>
+        {u.renovations.length > 0 && (
           <ul className="divide-y">
             {u.renovations.map((r) => (
-              <li key={r.renovation.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+              <li key={r.renovation.id} className="flex cursor-pointer items-center justify-between gap-3 py-2 text-sm hover:bg-accent/40" onClick={() => openRenovation(r.renovation.id)}>
                 <span>
                   <span className="font-medium">{r.renovation.title}</span>
                   <span className="block text-xs text-muted-foreground">
                     {formatMoney(r.renovation.actualCost)} of {formatMoney(r.renovation.budget)} · {r.renovation.progressPercent}% · {formatDate(r.renovation.startDate)} → {formatDate(r.renovation.targetEndDate)}
                   </span>
                 </span>
-                <StatusBadge value={r.renovation.status} />
+                <StatusBadge value={r.delayed ? "delayed" : r.renovation.status} />
               </li>
             ))}
           </ul>
-        </SectionCard>
-      )}
+        )}
+      </SectionCard>
     </div>
   );
 }

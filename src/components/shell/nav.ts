@@ -6,6 +6,7 @@ import {
   Car,
   ClipboardCheck,
   ClipboardList,
+  Hammer,
   KeyRound,
   Truck,
   CreditCard,
@@ -80,6 +81,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/inspections", label: "Inspections", icon: ClipboardCheck, match: startsWith("/inspections") },
       { href: "/keys", label: "Keys", icon: KeyRound, match: startsWith("/keys") },
       { href: "/parking", label: "Parking", icon: Car, match: startsWith("/parking") },
+      { href: "/renovations", label: "Renovations", icon: Hammer, match: startsWith("/renovations") },
     ],
   },
   {
