@@ -83,7 +83,7 @@ export function createRenovation(input: RenovationInput): Command<Renovation> {
     };
     let next: Store = { ...store, renovations: [...store.renovations, renovation] };
     let unitPrev: Unit | null = null;
-    if (unit && input.markUnit && status !== "planned" && unitIsVacant(store, unit)) {
+    if (unit && input.markUnit && status !== "planned" && unit.status === "available" && unitIsVacant(store, unit)) {
       unitPrev = unit;
       next = { ...next, units: replaceById(next.units, { ...unit, status: "renovation" }) };
     }
@@ -215,12 +215,20 @@ export function addRenovationTask(renovationId: ID, input: { title: string; dueD
 
 export function toggleRenovationTask(renovationId: ID, taskId: ID, done?: boolean): Command<Renovation> {
   return (store) => {
-    const prev = indexStore(store).renovationById.get(renovationId);
-    if (!prev) throw new Error("Project not found");
-    const task = prev.tasks.find((t) => t.id === taskId);
+    const found = indexStore(store).renovationById.get(renovationId);
+    if (!found) throw new Error("Project not found");
+    const task = found.tasks.find((t) => t.id === taskId);
     if (!task) throw new Error("Task not found");
-    const next: Renovation = { ...prev, status: prev.status === "planned" && (done ?? !task.done) ? "in_progress" : prev.status, tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, done: done ?? !t.done } : t)) };
-    return finish({ ...store, renovations: replaceById(store.renovations, next) }, next, (s) => recompute({ ...s, renovations: replaceById(s.renovations, prev) }));
+    const marking = done ?? !task.done;
+    // Ticking the first task of a planned project starts it — through the audited status command.
+    const started = found.status === "planned" && marking ? setRenovationStatus(renovationId, "in_progress", "Started by ticking a task")(store) : null;
+    const base = started ? started.store : store;
+    const prev = indexStore(base).renovationById.get(renovationId)!;
+    const next: Renovation = { ...prev, tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, done: marking } : t)) };
+    return finish({ ...base, renovations: replaceById(base.renovations, next) }, next, (s) => {
+      const back = recompute({ ...s, renovations: replaceById(s.renovations, prev) });
+      return started?.undo ? started.undo(back) : back;
+    });
   };
 }
 

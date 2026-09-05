@@ -212,8 +212,17 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       if (contract) return openUnit(contract.unitId, "documents");
       const tenant = idx.tenantById.get(targetId);
       if (tenant) return openTenant(tenant.id);
+      const unit = idx.unitById.get(targetId);
+      if (unit) return openUnit(unit.id, "documents");
+      const property = idx.propertyById.get(targetId);
+      if (property) return router.push(`/properties/${property.id}?view=documents`);
+      const asset = idx.assetById.get(targetId);
+      if (asset) return openAsset(asset.id);
+      const doc = idx.documentById.get(targetId);
+      if (doc) return reviewDocument(doc.id);
+      return router.push("/documents?view=review");
     },
-    [openUnit, openTenant, store],
+    [openUnit, openTenant, openAsset, reviewDocument, router, store],
   );
 
   const perform = useCallback(
@@ -292,8 +301,10 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           const k = store.keys.find((x) => x.id === action.targetId);
           return router.push(k ? `/keys?property=${k.propertyId}${k.unitId ? `&unit=${k.unitId}` : ""}` : "/keys");
         }
-        case "view_plan":
-          return router.push(`/maintenance/preventive?state=all`);
+        case "view_plan": {
+          const plan = store.preventivePlans.find((p) => p.id === action.targetId);
+          return plan ? editPlan(plan.id) : router.push("/maintenance/preventive");
+        }
         case "schedule_service":
           return logService(action.targetId);
         case "approve_work_order":
@@ -320,7 +331,7 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, router, store, run],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, editPlan, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, router, store, run],
   );
 
   const value = useMemo<ActionsContextValue>(

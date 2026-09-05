@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { recordPayment, setAlertTypeMuted, snoozeAlert, unsnoozeAlert, updateThresholds } from "@/lib/commands";
+import { recordPayment, resolveAlert, setAlertTypeMuted, snoozeAlert, unsnoozeAlert, updateThresholds } from "@/lib/commands";
 import { recompute } from "@/lib/derived/recompute";
 import { ALERT_RULES, ALERT_TYPES, THRESHOLD_FIELDS } from "@/lib/derived/alert-catalog";
 import { getAlerts } from "@/lib/queries";
@@ -88,5 +88,20 @@ describe("muting, snoozing and thresholds", () => {
     assert.ok(after >= before, "tighter vacancy rules raise at least as many alerts");
     const { store: lax } = updateThresholds({ vacantWarningDays: 3650, vacantCriticalDays: 3650 })(s);
     assert.equal(lax.alerts.filter((a) => a.type === "occupancy_vacant_long").length, 0);
+  });
+});
+
+describe("muted rules keep alert state", () => {
+  it("re-enabling or undoing a mute brings alerts back with their read / resolved flags", () => {
+    const s = seed();
+    const target = s.alerts.find((a) => a.type === "payment_overdue")!;
+    const { store: resolved } = resolveAlert(target.id, true)(s);
+    const { store: muted, undo } = setAlertTypeMuted("payment_overdue", true)(resolved);
+    assert.equal(muted.alerts.filter((a) => a.type === "payment_overdue").length, 0);
+    assert.ok((muted.mutedAlerts ?? []).some((a) => a.id === target.id && a.resolved), "parked with its state");
+    const { store: enabled } = setAlertTypeMuted("payment_overdue", false)(muted);
+    assert.equal(enabled.alerts.find((a) => a.id === target.id)?.resolved, true, "resolved survives re-enable");
+    const back = undo!(muted);
+    assert.equal(back.alerts.find((a) => a.id === target.id)?.resolved, true, "resolved survives undo");
   });
 });

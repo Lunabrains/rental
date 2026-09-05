@@ -129,11 +129,17 @@ export function getCashFlowForecast(store: Store, opts: { months?: number; prope
   /* Preventive services falling due. */
   for (const plan of store.preventivePlans) {
     if (plan.status !== "active" || !inScope(plan.propertyId) || !plan.estimatedCost) continue;
+    const step = Math.max(1, plan.recurrenceMonths);
     let due = plan.nextServiceDate;
     let guard = 0;
-    while (due <= to && guard++ < 12) {
-      push({ kind: "service", label: plan.maintenanceType, detail: `${place(plan.propertyId, null)}${plan.assetId ? ` · ${idx.assetById.get(plan.assetId)?.name ?? ""}` : ""} · ${due < base ? `overdue since ${due}` : `due ${due}`}`, date: due < base ? base : due, amount: plan.estimatedCost, direction: "out", propertyId: plan.propertyId, unitId: null, tenantId: null, ref: { type: "plan", id: plan.id }, projected: true });
-      due = addMonthsISO(due, Math.max(1, plan.recurrenceMonths));
+    // An overdue service is one catch-up visit, not one per missed interval.
+    if (due < base) {
+      push({ kind: "service", label: plan.maintenanceType, detail: `${place(plan.propertyId, null)}${plan.assetId ? ` · ${idx.assetById.get(plan.assetId)?.name ?? ""}` : ""} · overdue since ${due}`, date: base, amount: plan.estimatedCost, direction: "out", propertyId: plan.propertyId, unitId: null, tenantId: null, ref: { type: "plan", id: plan.id }, projected: true });
+      while (due <= base && guard++ < 120) due = addMonthsISO(due, step);
+    }
+    while (due <= to && guard++ < 24) {
+      push({ kind: "service", label: plan.maintenanceType, detail: `${place(plan.propertyId, null)}${plan.assetId ? ` · ${idx.assetById.get(plan.assetId)?.name ?? ""}` : ""} · due ${due}`, date: due, amount: plan.estimatedCost, direction: "out", propertyId: plan.propertyId, unitId: null, tenantId: null, ref: { type: "plan", id: plan.id }, projected: true });
+      due = addMonthsISO(due, step);
     }
   }
 
@@ -144,10 +150,15 @@ export function getCashFlowForecast(store: Store, opts: { months?: number; prope
     if (remaining <= 0) continue;
     const start = r.startDate > base ? r.startDate : base;
     const end = r.targetEndDate > start ? r.targetEndDate : start;
-    const span = periods.filter((p) => p >= periodOf(start) && p <= periodOf(end));
-    const slots = span.length > 0 ? span : [first];
-    const per = remaining / slots.length;
-    for (const p of slots) push({ kind: "capex", label: r.title, detail: `${place(r.propertyId, r.unitId)} · remaining budget spread to ${end}`, date: p === first ? base : `${p}-01`, amount: Math.round(per), direction: "out", propertyId: r.propertyId, unitId: r.unitId, tenantId: null, ref: { type: "renovation", id: r.id }, projected: true });
+    // Spread evenly over the project's own remaining months; only the months inside the horizon are booked.
+    const startP = periodOf(start);
+    const endP = periodOf(end);
+    const projectMonths = (Number(endP.slice(0, 4)) - Number(startP.slice(0, 4))) * 12 + (Number(endP.slice(5, 7)) - Number(startP.slice(5, 7))) + 1;
+    const per = remaining / Math.max(1, projectMonths);
+    for (const p of periods) {
+      if (p < startP || p > endP) continue;
+      push({ kind: "capex", label: r.title, detail: `${place(r.propertyId, r.unitId)} · remaining budget spread evenly to ${end}`, date: p === first ? base : `${p}-01`, amount: Math.round(per), direction: "out", propertyId: r.propertyId, unitId: r.unitId, tenantId: null, ref: { type: "renovation", id: r.id }, projected: true });
+    }
   }
 
   /* Deposits due back when tenancies end. */

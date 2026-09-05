@@ -1,6 +1,6 @@
 import { indexStore } from "@/lib/data/store";
 import { addPeriods, daysBetween, daysSince, lastPeriods, periodEnd, periodOf, periodStart, today } from "@/lib/date";
-import { arrearsAging, noiFor } from "@/lib/derived/metrics";
+import { arrearsAging, collectionRate, noiFor } from "@/lib/derived/metrics";
 import { isOccupying } from "@/lib/derived/occupancy";
 import type { ExportCell } from "@/lib/export";
 import { labelize } from "@/lib/format";
@@ -78,6 +78,7 @@ export function getPortfolioTrends(store: Store, months = 12, propertyId?: ID, b
   const linked = new Set(expenses.filter((e) => e.workOrderId).map((e) => e.workOrderId));
   return periods.map((period) => {
     const noi = noiFor(store, period, propertyId);
+    const cr = collectionRate(payments, period, period === periodOf(base) ? base : undefined);
     const rev = revenue.get(period);
     const end = periodEnd(period) < base ? periodEnd(period) : base;
     let outstanding = 0;
@@ -94,7 +95,7 @@ export function getPortfolioTrends(store: Store, months = 12, propertyId?: ID, b
       occupancy: rev?.occupancy ?? 0,
       expected: noi.income,
       collected: rev?.collected ?? noi.collected,
-      collectionRate: noi.income > 0 ? Math.min(1, noi.collected / noi.income) : 0,
+      collectionRate: cr.rate,
       outstanding,
       operating: noi.operatingExpenses,
       capex: noi.capex,
@@ -291,7 +292,7 @@ export function getMaintenanceAnalytics(store: Store, propertyId?: ID, base: ISO
     monthly,
     resolution: { avgDays: avg(resolved), medianDays: median(resolved), byPriority },
     repeatIssues: [...groups.values()].filter((g) => g.count >= 2).sort((a, b) => b.count - a.count || b.cost - a.cost),
-    suppliers: getSuppliers(store, { activeOnly: false }).filter((s) => s.jobs > 0).sort((a, b) => (b.score ?? -1) - (a.score ?? -1)),
+    suppliers: getSuppliers(store, { activeOnly: false, propertyId }).filter((s) => s.jobs > 0).sort((a, b) => (b.score ?? -1) - (a.score ?? -1)),
     topAssets: getAssets(store, { propertyId }).filter((a) => a.totalSpend > 0).sort((a, b) => b.totalSpend - a.totalSpend).slice(0, 10),
     spend12m: inWindow.reduce((n, r) => n + r.cost, 0),
     jobs12m: inWindow.length,

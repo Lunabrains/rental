@@ -104,11 +104,12 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* Reminder */
-  if (/\b(remind me|set (a )?reminder|reminder (to|for|about)|note to self|follow ?up (with|on))\b/.test(q)) {
+  // An instruction ("remind me to call…"), never a question that merely contains the word ("remind me who hasn't paid").
+  if (/\b(remind me|set (a )?reminder|reminder (to|for|about)|note to self|follow ?up (with|on))\b/.test(q) && !/\b(remind me|reminder) (who|which|what|when|where|whether|if|how)\b/.test(q) && !/\b(who|which|what|how (much|many|long)|list|show)\b/.test(q)) {
     const people = e.tenant ? [e.tenant] : tenantsIn(store, q).slice(0, 4);
     if (people.length > 0) return local({ text: v.reminderOffer(people.map((t) => t.fullName).join(" / ")), actions: people.map((t) => act("create_reminder", people.length === 1 ? v.labels.remind : `${v.labels.remind} · ${t.fullName}`, t.id)) });
-    const target = scope ? { id: scope.id, label: scope.name } : store.properties[0] ? { id: store.properties[0].id, label: lang === "ar" ? "المحفظة" : "the portfolio" } : null;
-    return local({ text: v.reminderOffer(target?.label ?? (lang === "ar" ? "المحفظة" : "the portfolio")), actions: target ? [act("create_reminder", v.labels.remind, target.id)] : [] });
+    const target = scope ? { id: scope.id, label: scope.name } : { id: "portfolio", label: lang === "ar" ? "المحفظة" : "the portfolio" };
+    return local({ text: v.reminderOffer(target.label), actions: [act("create_reminder", v.labels.remind, target.id)] });
   }
 
   /* Draft work order */
@@ -221,7 +222,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
 
   /* Spend on a category */
   const cat = expenseCategoryIn(q);
-  if (cat && /\b(spend|spent|paid|pay|cost\w*|how much)\b/.test(q) && !/\bsupplier|contractor|technician\b/.test(q)) {
+  if (cat && /\b(spend|spent|paid|pay|cost\w*|how much)\b/.test(q) && !/\bsupplier|contractor|technician\b/.test(q) && !/\bdeposits?\b/.test(q)) {
     const { year, label } = yearIn(q, base);
     const rows = getExpenses(store, { category: cat, period: year, propertyId: scopeId }, base);
     const total = rows.reduce((n, r) => n + r.expense.amount, 0);
@@ -241,9 +242,10 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
 
   /* Overdue maintenance */
   if (/\b(maintenance|work orders?|jobs?|repairs?|tickets?)\b/.test(q) && /\b(overdue|late|stuck|too long|old|open|outstanding|pending|backlog)\b/.test(q)) {
-    const rows = getWorkOrders(store, { propertyId: scopeId, status: "open" }, base).filter((r) => r.overdue || /\b(open|outstanding|pending|backlog)\b/.test(q)).sort((a, b) => b.ageDays - a.ageDays);
-    if (rows.length === 0) return local({ text: v.maintenanceOverdueNone(scopeLabel) });
-    return local({ text: v.maintenanceOverdue(rows.length, scopeLabel, rows[0].workOrder.title, rows[0].ageDays), table: { columns: [v.cols.title, v.cols.where, v.cols.status, v.cols.age, v.cols.supplier], rows: rows.slice(0, 12).map((r) => [`${r.workOrder.number} ${r.workOrder.title}`, `${r.property.name}${r.unit ? ` · ${r.unit.unitNumber}` : ""}`, labelize(r.workOrder.status), r.ageDays, r.supplier?.name ?? s.dash]) }, actions: [act("view_work_order", v.labels.open, rows[0].workOrder.id), ...(rows.find((r) => r.workOrder.status === "awaiting_approval") ? [act("approve_work_order", v.labels.approve, rows.find((r) => r.workOrder.status === "awaiting_approval")!.workOrder.id)] : [])] });
+    const allOpen = /\b(open|outstanding|pending|backlog)\b/.test(q) && !/\b(overdue|late|stuck|too long)\b/.test(q);
+    const rows = getWorkOrders(store, { propertyId: scopeId, status: "open" }, base).filter((r) => allOpen || r.overdue).sort((a, b) => b.ageDays - a.ageDays);
+    if (rows.length === 0) return local({ text: allOpen ? v.maintenanceOpenNone(scopeLabel) : v.maintenanceOverdueNone(scopeLabel) });
+    return local({ text: allOpen ? v.maintenanceOpen(rows.length, scopeLabel, rows[0].workOrder.title, rows[0].ageDays) : v.maintenanceOverdue(rows.length, scopeLabel, rows[0].workOrder.title, rows[0].ageDays), table: { columns: [v.cols.title, v.cols.where, v.cols.status, v.cols.age, v.cols.supplier], rows: rows.slice(0, 12).map((r) => [`${r.workOrder.number} ${r.workOrder.title}`, `${r.property.name}${r.unit ? ` · ${r.unit.unitNumber}` : ""}`, labelize(r.workOrder.status), r.ageDays, r.supplier?.name ?? s.dash]) }, actions: [act("view_work_order", v.labels.open, rows[0].workOrder.id), ...(rows.find((r) => r.workOrder.status === "awaiting_approval") ? [act("approve_work_order", v.labels.approve, rows.find((r) => r.workOrder.status === "awaiting_approval")!.workOrder.id)] : [])] });
   }
 
   /* Repeat issues */

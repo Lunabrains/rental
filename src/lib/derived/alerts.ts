@@ -72,6 +72,11 @@ const act = (kind: AlertAction["kind"], label: string, targetId: ID): AlertActio
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 export function computeAlerts(store: Store, base: ISODate): Alert[] {
+  return computeAlertSets(store, base).alerts;
+}
+
+/** Live alerts plus the ones parked because their rule is muted. */
+export function computeAlertSets(store: Store, base: ISODate): { alerts: Alert[]; mutedAlerts: Alert[] } {
   const idx = indexStore(store);
   const t = store.settings.thresholds;
   const out: Candidate[] = [];
@@ -1110,15 +1115,16 @@ export function computeAlerts(store: Store, base: ISODate): Alert[] {
   /* ------------------------------- Merge -------------------------------- */
 
   const muted = new Set(store.settings.mutedAlertTypes);
-  const previous = new Map(store.alerts.map((a) => [a.id, a]));
+  const previous = new Map<string, Alert>([...(store.mutedAlerts ?? []), ...store.alerts].map((a) => [a.id, a]));
   const now = nowISO();
   const seen = new Set<string>();
   const merged: Alert[] = [];
+  const parked: Alert[] = [];
   for (const c of out) {
-    if (seen.has(c.id) || muted.has(c.type)) continue;
+    if (seen.has(c.id)) continue;
     seen.add(c.id);
     const p = previous.get(c.id);
-    merged.push({
+    (muted.has(c.type) ? parked : merged).push({
       ...c,
       createdAt: p?.createdAt ?? now,
       read: p?.read ?? false,
@@ -1128,7 +1134,7 @@ export function computeAlerts(store: Store, base: ISODate): Alert[] {
       snoozedUntil: p?.snoozedUntil && p.snoozedUntil > today() ? p.snoozedUntil : null,
     });
   }
-  return merged;
+  return { alerts: merged, mutedAlerts: parked };
 }
 
 function rentRoll(contracts: Contract[], d: ISODate): number {

@@ -234,7 +234,21 @@ export function extractByRules(store: Store, doc: Pick<StoredDocument, "fileName
       fields.push({ key: "propertyName", label: FIELD_LABELS.propertyName, value: p.name, confidence: score, evidence: "name in file" });
     }
   }
-  const unitToken = haystack.match(/\b(?:unit|apt|apartment|flat)?\s*-?([a-z]?\d{3,4})\b/i)?.[1]?.toUpperCase();
+  // Every 3–4 digit run that is not part of a date, a year or a reference like INV-302; a unit keyword in front wins.
+  const unitCandidates: string[] = [];
+  for (const m of haystack.matchAll(/(?<![0-9A-Za-z])(unit|apt|apartment|flat|#)?\s*-?([A-Za-z]?\d{3,4})(?![0-9A-Za-z])/gi)) {
+    const token = m[2].toUpperCase();
+    const before = haystack.slice(Math.max(0, m.index ?? 0) - 6, m.index ?? 0);
+    const after = haystack.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 6);
+    const keyword = Boolean(m[1]);
+    const datePart = /[-_./]\s*$/.test(before) && /^\s*[-_./]?\d/.test(after) ? true : /^[-_./]\d{1,2}[-_./]/.test(after) || /\d[-_./]$/.test(before);
+    const reference = /[A-Z]{2,5}-$/i.test(before);
+    const year = /^(19|20)\d{2}$/.test(token);
+    if (!keyword && (datePart || reference || year)) continue;
+    unitCandidates.push(token);
+    if (keyword) unitCandidates.unshift(token);
+  }
+  const unitToken = unitCandidates.find((tok) => store.units.some((u) => u.unitNumber.toUpperCase() === tok && (!links.propertyId || u.propertyId === links.propertyId)));
   if (unitToken) {
     const candidates = store.units.filter((u) => u.unitNumber.toUpperCase() === unitToken && (!links.propertyId || u.propertyId === links.propertyId));
     if (candidates.length === 1) {

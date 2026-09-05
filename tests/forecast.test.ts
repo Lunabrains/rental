@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { createRenovation } from "@/lib/commands";
 import { recompute } from "@/lib/derived/recompute";
 import { getCashFlowForecast, getVacancyCost } from "@/lib/queries";
 import type { Store } from "@/types";
 
-import { contract, deposit, expense, payment, property, smallStore, tenant, unit } from "./helpers";
+import { contract, deposit, expense, payment, plan, property, smallStore, tenant, unit } from "./helpers";
 
 function base(): Store {
   const p = property({ id: "bh" });
@@ -69,5 +70,27 @@ describe("cash-flow forecast", () => {
     assert.equal(v.monthlyRunRate, 900);
     assert.equal(v.atRisk.length, 1);
     assert.equal(v.atRiskMonthly, 1000);
+  });
+});
+
+describe("forecast edge cases", () => {
+  it("spreads a project's remaining budget over its own months and only books the months in the horizon", () => {
+    const s = base();
+    const { store } = createRenovation({ propertyId: "bh", unitId: "bh-102", title: "Roof works", projectType: "renovation", budget: 30000, startDate: "2027-06-01", targetEndDate: "2027-08-31" })(s);
+    const f = getCashFlowForecast(store, { months: 3 });
+    assert.equal(f.totals.capex, 0, "a project beyond the horizon books nothing now");
+    const { store: soon } = createRenovation({ propertyId: "bh", unitId: "bh-102", title: "Paint", projectType: "repair", budget: 3000, startDate: "2026-09-10", targetEndDate: "2026-11-20" })(s);
+    const g = getCashFlowForecast(soon, { months: 2 });
+    assert.equal(g.months[0].capex, 1000, "one third per project month");
+    assert.equal(g.months[1].capex, 1000);
+  });
+
+  it("counts an overdue service once, then continues on its cycle", () => {
+    const s = base();
+    const overdue = plan({ id: "pl-1", propertyId: "bh", assetId: null, maintenanceType: "Tank cleaning", recurrenceMonths: 1, nextServiceDate: "2026-05-01", estimatedCost: 100, status: "active" });
+    const f = getCashFlowForecast(recompute({ ...s, preventivePlans: [overdue] }), { months: 3 });
+    assert.equal(f.months[0].services, 100, "one catch-up visit this month");
+    assert.equal(f.months[1].services, 100, "then the October visit");
+    assert.equal(f.months[2].services, 100);
   });
 });

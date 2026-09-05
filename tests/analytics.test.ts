@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { collectionRate } from "@/lib/derived/metrics";
 import { isOccupying } from "@/lib/derived/occupancy";
 import { buildAllReports, buildReport, getExpenseAnalytics, getExpirationTimeline, getMaintenanceAnalytics, getPortfolioTrends, REPORT_KEYS } from "@/lib/queries";
 import type { Store } from "@/types";
@@ -108,5 +109,26 @@ describe("reports", () => {
     assert.ok(soon.rows.every((row) => (row[1] as number) <= 30));
     const balances = buildReport(s, "tenant_balances", {}, TODAY);
     assert.ok(balances.rows.some((row) => String(row[0]).startsWith("Karim")), "Karim owes rent");
+  });
+});
+
+describe("building scoping", () => {
+  it("scopes supplier rows in maintenance analytics to the building", () => {
+    const s = seed();
+    const marina = s.properties.find((p) => p.name.startsWith("Marina"))!;
+    const all = getMaintenanceAnalytics(s, undefined, TODAY);
+    const one = getMaintenanceAnalytics(s, marina.id, TODAY);
+    assert.ok(one.suppliers.length <= all.suppliers.length);
+    for (const r of one.suppliers) {
+      const whole = all.suppliers.find((x) => x.supplier.id === r.supplier.id)!;
+      assert.ok(r.jobs <= whole.jobs && r.totalSpend <= whole.totalSpend, r.supplier.name);
+    }
+    assert.ok(one.suppliers.reduce((n, r) => n + r.jobs, 0) < all.suppliers.reduce((n, r) => n + r.jobs, 0));
+  });
+
+  it("reports the collection rate the same way as the metrics module", () => {
+    const s = seed();
+    const t = getPortfolioTrends(s, 3, undefined, TODAY);
+    for (const p of t) assert.equal(p.collectionRate, collectionRate(s.payments, p.period, p.period === "2026-09" ? TODAY : undefined).rate, p.period);
   });
 });

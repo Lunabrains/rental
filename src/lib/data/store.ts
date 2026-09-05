@@ -92,6 +92,7 @@ export function createEmptyStore(settings: Settings = DEFAULT_SETTINGS): Store {
     keys: [],
     reminders: [],
     alerts: [],
+    mutedAlerts: [],
     activity: [],
     audit: [],
     settings,

@@ -68,7 +68,7 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
   for (const w of getWorkOrders(store, { status: "open" }, base).filter((w) => w.workOrder.status === "awaiting_approval")) {
     decide.push({ id: `wo-${w.workOrder.id}`, title: `Approve ${w.workOrder.number} — ${w.workOrder.title}`, detail: `${place(w.workOrder.propertyId, w.workOrder.unitId)} · ${w.supplier?.name ?? "no supplier"} · quote ${w.workOrder.estimatedCost ? formatMoney(w.workOrder.estimatedCost) : "pending"} · waiting ${w.ageDays} days`, tone: w.workOrder.priority === "emergency" ? "critical" : "warning", amount: w.workOrder.estimatedCost ?? undefined, actions: [act("approve_work_order", "Approve", w.workOrder.id), act("view_work_order", "Open", w.workOrder.id)] });
   }
-  for (const c of getExpiringContracts(store, t.contractWarningDays, undefined, base).filter((r) => r.contract.renewalStatus === "awaiting_decision" || (r.contract.renewalDecision === null && r.daysRemaining <= t.contractWarningDays))) {
+  for (const c of getExpiringContracts(store, t.contractWarningDays, undefined, base).filter((r) => r.contract.status !== "notice_given" && r.contract.moveOutDate === null && (r.contract.renewalStatus === "awaiting_decision" || (r.contract.renewalDecision === null && r.daysRemaining <= t.contractWarningDays)))) {
     decide.push({ id: `renew-${c.contract.id}`, title: `Renewal decision — ${c.tenant.fullName}`, detail: `${c.property.name} ${c.unit.unitNumber} · ${formatMoney(c.contract.monthlyRent)}/month · ends ${formatDate(c.contract.endDate)} (${c.daysRemaining} days)${c.hasOverdue ? " · currently overdue" : c.reliable ? " · always on time" : ""}`, tone: c.daysRemaining <= 7 ? "critical" : "warning", date: c.contract.endDate, actions: [act("renew_contract", "Renew", c.contract.id), act("mark_as_leaving", "Leaving", c.contract.id), act("view_tenant", "Tenant", c.tenant.id)] });
   }
   for (const d of getDeposits(store, {}).filter((r) => r.tenancyEnded && r.deposit.status !== "settled")) {
@@ -150,7 +150,10 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
 
   /* -------------------------------- Numbers -------------------------------- */
   const cr = collectionRate(store.payments, periodOf(base), base);
-  const forecast = getCashFlowForecast(store, { months: 1 }, base);
+  const forecast = getCashFlowForecast(store, { months: 2 }, base);
+  const horizon = addDaysISO(base, 30);
+  const within = forecast.months.flatMap((m) => m.items).filter((i) => i.date <= horizon);
+  const net30 = within.reduce((n, i) => n + (i.direction === "in" ? i.amount : -i.amount), 0);
   const numbers = {
     occupancy: overview.occupancy.current,
     collectedThisMonth: cr.collected,
@@ -158,7 +161,7 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
     collectionRate: cr.rate,
     outstanding: overview.outstanding.current,
     criticalAlerts: overview.criticalAlerts.total,
-    net30: forecast.months[0]?.net ?? 0,
+    net30,
   };
 
   /* ------------------------------- Narrative ------------------------------- */

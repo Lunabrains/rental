@@ -388,7 +388,8 @@ export function updateParkingSpace(spaceId: ID, patch: Partial<Pick<ParkingSpace
     if (!prev) throw new Error("Parking space not found");
     if (patch.monthlyFee !== undefined && patch.monthlyFee < 0) throw new Error("Fee cannot be negative");
     if (patch.status === "assigned" && !prev.unitId && !prev.tenantId) throw new Error("Use Assign to give the space to a unit or tenant");
-    const next: ParkingSpace = { ...prev, ...patch, spaceNumber: patch.spaceNumber === undefined ? prev.spaceNumber : patch.spaceNumber.trim() || prev.spaceNumber };
+    const releasing = patch.status !== undefined && patch.status !== "assigned" && prev.status === "assigned";
+    const next: ParkingSpace = { ...prev, ...patch, spaceNumber: patch.spaceNumber === undefined ? prev.spaceNumber : patch.spaceNumber.trim() || prev.spaceNumber, ...(releasing ? { unitId: null, tenantId: null, vehiclePlate: null } : {}) };
     const audited = auditChanges({ ...store, parking: replaceById(store.parking, next) }, "parking", next.id, `Parking ${next.spaceNumber}`, prev, next);
     return finish(audited.store, next, (s) => recompute(removeAudit({ ...s, parking: replaceById(s.parking, prev) }, audited.entryIds)));
   };

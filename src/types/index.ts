@@ -1159,6 +1159,8 @@ export interface Store {
   keys: KeyItem[];
   reminders: Reminder[];
   alerts: Alert[];
+  /** Alerts of muted rule types, parked with their state so re-enabling (or undoing a mute) restores them. */
+  mutedAlerts?: Alert[];
   activity: ActivityLog[];
   audit: AuditEntry[];
   settings: Settings;

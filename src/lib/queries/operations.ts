@@ -565,12 +565,12 @@ export interface SupplierRow {
   lastJobAt: ISODate | null;
 }
 
-export function supplierRow(store: Store, s: Supplier): SupplierRow {
+export function supplierRow(store: Store, s: Supplier, propertyId?: ID): SupplierRow {
   const idx = indexStore(store);
   const t = store.settings.thresholds;
-  const orders = idx.workOrdersBySupplier.get(s.id) ?? [];
+  const orders = (idx.workOrdersBySupplier.get(s.id) ?? []).filter((w) => !propertyId || w.propertyId === propertyId);
   const completed = orders.filter((w) => w.completedAt !== null && w.status !== "cancelled");
-  const expenses = idx.expensesBySupplier.get(s.id) ?? [];
+  const expenses = (idx.expensesBySupplier.get(s.id) ?? []).filter((e) => !propertyId || e.propertyId === propertyId);
   const totalSpend = sum(expenses.map((e) => e.amount)) + sum(completed.filter((w) => !expenses.some((e) => e.workOrderId === w.id)).map((w) => w.actualCost ?? 0));
   const responses = completed.map((w) => (w.startedAt ? daysBetween(w.reportedAt, w.startedAt) : null)).filter((x): x is number => x !== null && x >= 0);
   const completions = completed.map((w) => (w.completedAt ? daysBetween(w.reportedAt, w.completedAt) : null)).filter((x): x is number => x !== null && x >= 0);
@@ -625,10 +625,10 @@ export function supplierRow(store: Store, s: Supplier): SupplierRow {
   };
 }
 
-export function getSuppliers(store: Store, filter: { category?: Supplier["category"]; activeOnly?: boolean } = {}): SupplierRow[] {
+export function getSuppliers(store: Store, filter: { category?: Supplier["category"]; activeOnly?: boolean; propertyId?: ID } = {}): SupplierRow[] {
   return store.suppliers
     .filter((s) => (!filter.category || s.category === filter.category) && (!filter.activeOnly || s.active))
-    .map((s) => supplierRow(store, s))
+    .map((s) => supplierRow(store, s, filter.propertyId))
     .sort((a, b) => (b.score ?? -1) - (a.score ?? -1) || b.jobs - a.jobs || a.supplier.name.localeCompare(b.supplier.name));
 }
 

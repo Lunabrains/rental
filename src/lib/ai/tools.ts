@@ -472,9 +472,11 @@ export function executeTool(store: Store, name: string, input: Record<string, un
     case "get_vacant_units": {
       const minDays = Number(input.min_days ?? 0) || 0;
       const v = computeVacancyOpportunity(store, base);
+      const scopedRows = scopeId ? getVacantUnits(store, 0, scopeId) : null;
       return {
-        vacantUnits: v.vacantUnits,
-        monthlyPotential: money(v.monthlyPotential),
+        property: scope?.name ?? null,
+        vacantUnits: scopedRows ? scopedRows.length : v.vacantUnits,
+        monthlyPotential: money(scopedRows ? scopedRows.reduce((n, r) => n + r.askingRent, 0) : v.monthlyPotential),
         units: getVacantUnits(store, minDays, scopeId).map((r) => ({ unitId: r.unit.id, property: r.property.name, unit: r.unit.unitNumber, daysVacant: r.daysVacant, askingRent: r.askingRent, previousTenant: r.previousTenant?.fullName ?? null, rentMissed: r.lostRevenue })),
       };
     }
@@ -677,7 +679,7 @@ export function knownActionTarget(store: Store, kind: string, id: ID): boolean {
     case "create_work_order":
       return idx.unitById.has(id) || idx.propertyById.has(id) || idx.assetById.has(id) || idx.inspectionById.has(id);
     case "create_reminder":
-      return idx.tenantById.has(id) || idx.unitById.has(id) || idx.propertyById.has(id);
+      return id === "portfolio" || idx.tenantById.has(id) || idx.unitById.has(id) || idx.propertyById.has(id);
     case "resolve_alert":
       return store.alerts.some((a) => a.id === id);
     default:

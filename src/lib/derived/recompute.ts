@@ -15,7 +15,7 @@ import type {
   UtilityReading,
 } from "@/types";
 
-import { computeAlerts } from "./alerts";
+import { computeAlertSets } from "./alerts";
 import { isOccupying } from "./occupancy";
 
 export { isOccupying };
@@ -168,6 +168,6 @@ export function recompute(store: Store, base: ISODate = today()): Store {
   const renovations = store.renovations.map((r) => deriveRenovation(r, expenses));
 
   const draft: Store = { ...store, contracts, payments, units, deposits, expenses, readings, assets, renovations };
-  const alerts = computeAlerts(draft, base);
-  return { ...draft, alerts };
+  const { alerts, mutedAlerts } = computeAlertSets(draft, base);
+  return { ...draft, alerts, mutedAlerts };
 }

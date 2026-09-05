@@ -95,14 +95,24 @@ export function DocumentReviewDialog({ documentId, onClose }: { documentId: stri
   function apply() {
     if (!doc) return;
     try {
-      const { undo } = run(updateDocument(doc.id, { category, title: title.trim() || doc.title, tenantId, contractId: category === "lease" || tenantId ? contractId : doc.contractId, propertyId, unitId, supplierId, assetId, issuedDate: issued || null, expiryDate: expiry || null }));
-      if (extraction) run(markDocumentReviewed(doc.id, { source: extraction.source, at: new Date().toISOString().slice(0, 10), docType: category, fields: extraction.fields.map((f) => ({ key: f.key, value: values[f.key] ?? f.value, confidence: f.confidence })) }));
+      const undos: (() => void)[] = [];
+      const filed = run(updateDocument(doc.id, { category, title: title.trim() || doc.title, tenantId, contractId: category === "lease" || tenantId ? contractId : doc.contractId, propertyId, unitId, supplierId, assetId, issuedDate: issued || null, expiryDate: expiry || null }));
+      if (filed.undo) undos.push(filed.undo);
+      if (extraction) {
+        const reviewed = run(markDocumentReviewed(doc.id, { source: extraction.source, at: new Date().toISOString().slice(0, 10), docType: category, fields: extraction.fields.map((f) => ({ key: f.key, value: values[f.key] ?? f.value, confidence: f.confidence })) }));
+        if (reviewed.undo) undos.push(reviewed.undo);
+      }
       const side: string[] = [];
       if (setWarranty && asset && expiry) {
-        run(updateAsset(asset.id, { warrantyExpiry: expiry }));
+        const warranty = run(updateAsset(asset.id, { warrantyExpiry: expiry }));
+        if (warranty.undo) undos.push(warranty.undo);
         side.push(`${asset.name} warranty → ${formatDate(expiry)}`);
       }
-      toast.success(`${title || doc.title} filed as ${labelize(category)}`, { description: side.length > 0 ? side.join(" · ") : `${extraction?.source === "model" ? "Read by Claude" : "Read by rules"} · reviewed by you`, action: undo ? { label: "Undo", onClick: undo } : undefined });
+      // Undo in reverse order so each command sees the state it wrote against.
+      const undoAll = () => {
+        for (const u of [...undos].reverse()) u();
+      };
+      toast.success(`${title || doc.title} filed as ${labelize(category)}`, { description: side.length > 0 ? side.join(" · ") : `${extraction?.source === "model" ? "Read by Claude" : "Read by rules"} · reviewed by you`, action: undos.length > 0 ? { label: "Undo", onClick: undoAll } : undefined });
       onClose();
       if (createExpense && propertyId) {
         const supplier = supplierId ? idx.supplierById.get(supplierId) : null;

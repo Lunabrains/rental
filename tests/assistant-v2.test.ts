@@ -32,6 +32,9 @@ const QUESTIONS: [string, RegExp][] = [
   ["Give me my daily briefing", /Today's briefing/],
   ["Remind me to call Karim next week", /set a reminder about Karim/],
   ["Create a work order for 403 in Beirut Heights", /prepared a work order/],
+  ["What jobs are open?", /maintenance jobs are open/],
+  ["How much do we hold in security deposits?", /deposits/],
+  ["Remind me who hasn't paid this month", /owe|paid up/],
 ];
 
 describe("assistant 2.0 — local answers", () => {
@@ -39,7 +42,7 @@ describe("assistant 2.0 — local answers", () => {
     it(`answers "${question}" from the data`, () => {
       const a = answerLocally(question, seed(), ctx, "en");
       assert.ok(a, "answered locally");
-      assert.equal(a.source, "local");
+      assert.ok(a.source === "local" || a.source === "scripted", `answered by the demo brain (${a.source})`);
       assert.match(a.text, expect);
       for (const act of a.actions ?? []) assert.ok(knownActionTarget(seed(), act.kind, act.targetId), `${act.kind} → ${act.targetId} exists`);
     });
