@@ -9,6 +9,7 @@ import { ContractStatusBadge, NeutralPill } from "@/components/common/badges";
 import { Chips } from "@/components/common/chips";
 import { RenewalsBoard } from "@/components/contracts/renewals-board";
 import { PageHeader } from "@/components/common/page-header";
+import { ImportButton } from "@/components/import/import-button";
 import { EmptyState } from "@/components/common/states";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -84,7 +85,7 @@ export function ContractsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Contracts" description={`${counts.active} active · ${counts.expiring} ending within ${window} days`} />
+      <PageHeader title="Contracts" description={`${counts.active} active · ${counts.expiring} ending within ${window} days`} actions={<ImportButton section="contracts" />} />
 
       <div className="flex flex-wrap items-center gap-3">
         <Chips<StatusFilter>

@@ -10,6 +10,7 @@ import { DataTable, type Column } from "@/components/common/data-table";
 import { EnumSelect } from "@/components/common/entity-select";
 import { KpiCard } from "@/components/common/kpi-card";
 import { PageHeader } from "@/components/common/page-header";
+import { ImportButton } from "@/components/import/import-button";
 import { ScoreBadge } from "@/components/common/score";
 import { StarRating } from "@/components/maintenance/supplier-dialog";
 import { Button } from "@/components/ui/button";
@@ -71,9 +72,12 @@ export function SuppliersPage() {
         title="Suppliers"
         description={`${kpis.active} active · ${formatMoney(kpis.spend)} paid all time · scores are computed from response time, completion time, cost accuracy and repeat issues`}
         actions={
-          <Button onClick={() => addSupplier(category ?? undefined)}>
-            <Plus className="size-4" /> Add supplier
-          </Button>
+          <>
+            <ImportButton section="suppliers" />
+            <Button onClick={() => addSupplier(category ?? undefined)}>
+              <Plus className="size-4" /> Add supplier
+            </Button>
+          </>
         }
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Building2, Search, Plus } from "lucide-react";
 
 import { useActions } from "@/components/actions/action-provider";
+import { ImportButton } from "@/components/import/import-button";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/states";
@@ -52,6 +53,7 @@ export function PropertiesPage() {
         description={`${all.length} buildings · ${totals.units} units · ${formatPercent(totals.occupancy)} occupied · ${formatMoney(totals.revenue)}/month`}
         actions={
           <>
+            <ImportButton section="properties" />
             <Button onClick={() => addProperty()}>
               <Plus className="size-4" /> Add building
             </Button>

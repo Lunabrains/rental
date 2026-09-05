@@ -8,6 +8,7 @@ import { NeutralPill } from "@/components/common/badges";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Chips } from "@/components/common/chips";
 import { useActions } from "@/components/actions/action-provider";
+import { ImportButton } from "@/components/import/import-button";
 import { PageHeader } from "@/components/common/page-header";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/states";
@@ -55,9 +56,12 @@ export function TenantsPage() {
         title="Tenants"
         description={`${counts.current} current · ${counts.former} former`}
         actions={
-          <Button onClick={() => addTenantRecord()}>
-            <UserPlus className="size-4" /> Add tenant
-          </Button>
+          <>
+            <ImportButton section="tenants" />
+            <Button onClick={() => addTenantRecord()}>
+              <UserPlus className="size-4" /> Add tenant
+            </Button>
+          </>
         }
       />
 

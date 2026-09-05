@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { ArrowLeft, ArrowRight, CheckCircle2, Download, FileSpreadsheet, Info, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/common/page-header";
 import { SectionCard } from "@/components/common/section-card";
 import { Dropzone } from "@/components/import/dropzone";
+import { IMPORT_SECTIONS } from "@/components/import/import-button";
 import { MappingEditor } from "@/components/import/mapping-editor";
 import { PlanPreview, PlanSummary } from "@/components/import/preview";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,8 @@ interface Planned {
 
 export function ImportPage() {
   const { store, run, reset, seed, status } = useStoreContext();
+  const sectionKey = useSearchParams().get("for");
+  const section = sectionKey ? IMPORT_SECTIONS[sectionKey] ?? null : null;
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [planned, setPlanned] = useState<Planned | null>(null);
   const [busy, setBusy] = useState(false);
@@ -180,7 +184,7 @@ export function ImportPage() {
       <PageHeader
         title="Import data"
         description="Bring in your existing records — buildings, units, tenants, contracts, suppliers, assets, expenses and more — from the template or from the spreadsheets you already keep. Preview first; nothing is written until you confirm."
-        crumbs={[{ label: "Settings", href: "/settings" }, { label: "Import" }]}
+        crumbs={section ? [{ label: section.label, href: section.back }, { label: "Import" }] : [{ label: "Settings", href: "/settings" }, { label: "Import" }]}
         actions={
           <Button variant="outline" onClick={() => downloadArrayBuffer(workbookToArrayBuffer(buildTemplateWorkbook()), "rental-import-template.xlsx")}>
             <Download className="size-4" />
@@ -193,6 +197,14 @@ export function ImportPage() {
 
       {step === "upload" && (
         <SectionCard title="1 · Upload" description="Any .xlsx — one tab per kind of record. Columns are matched to the system by their headers (English or Arabic); you can adjust the match before anything is imported.">
+          {section && (
+            <div className="mb-3 flex items-start gap-2 rounded-md bg-brand-muted/70 px-3 py-2 text-xs">
+              <Info className="mt-0.5 size-3.5 shrink-0 text-brand" />
+              <span>
+                <span className="font-medium">Importing {section.label.toLowerCase()}.</span> {section.hint} Expected tabs: {section.entities.map((e) => SHEET_NAMES[e]).join(", ")} — other tabs in the file are imported too.
+              </span>
+            </div>
+          )}
           <Dropzone onFile={readFile} busy={busy} disabled={busy || status.state !== "ready"} />
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="size-3.5" />
@@ -293,7 +305,7 @@ export function ImportPage() {
                   </Button>
                 )}
                 <Button variant="outline" asChild>
-                  <Link href="/properties">All properties</Link>
+                  <Link href={section?.back ?? "/properties"}>{section ? `Back to ${section.label.toLowerCase()}` : "All properties"}</Link>
                 </Button>
                 <Button variant="ghost" onClick={startOver}>
                   Import another file

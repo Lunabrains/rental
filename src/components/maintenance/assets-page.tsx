@@ -10,6 +10,7 @@ import { DataTable, type Column } from "@/components/common/data-table";
 import { EnumSelect, PropertySelect } from "@/components/common/entity-select";
 import { KpiCard } from "@/components/common/kpi-card";
 import { PageHeader } from "@/components/common/page-header";
+import { ImportButton } from "@/components/import/import-button";
 import { StatusBadge } from "@/components/common/status-badge";
 import { printQrLabels } from "@/components/maintenance/qr-code";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,7 @@ export function AssetsPage() {
         description={`${kpis.total} registered · ${formatMoney(kpis.spend)} maintenance spend all time`}
         actions={
           <>
+            <ImportButton section="assets" />
             <Button variant="outline" onClick={() => printQrLabels(rows.map((r) => ({ code: r.asset.qrCode, name: r.asset.name, building: r.property.name, type: labelize(r.asset.assetType) })))} disabled={rows.length === 0}>
               <Printer className="size-4" /> Print QR labels
             </Button>

@@ -12,6 +12,7 @@ import { DataTable, type Column } from "@/components/common/data-table";
 import { EnumSelect, PropertySelect, SupplierSelect } from "@/components/common/entity-select";
 import { KpiCard } from "@/components/common/kpi-card";
 import { PageHeader } from "@/components/common/page-header";
+import { ImportButton } from "@/components/import/import-button";
 import { SectionCard } from "@/components/common/section-card";
 import { StatusBadge } from "@/components/common/status-badge";
 import { DocumentPreview } from "@/components/documents/document-preview";
@@ -152,9 +153,12 @@ export function ExpensesPage() {
         title="Expenses"
         description={`${r.label} · ${summary.count} expenses · ${formatMoney(summary.total)}`}
         actions={
-          <Button onClick={() => addExpense({ propertyId })}>
-            <Plus className="size-4" /> Add expense
-          </Button>
+          <>
+            <ImportButton section="expenses" />
+            <Button onClick={() => addExpense({ propertyId })}>
+              <Plus className="size-4" /> Add expense
+            </Button>
+          </>
         }
       />
 
