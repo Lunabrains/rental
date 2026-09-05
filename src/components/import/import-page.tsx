@@ -2,61 +2,92 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
-import { ArrowRight, CheckCircle2, Download, FileSpreadsheet, RotateCcw, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Download, FileSpreadsheet, Info, RotateCcw, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { PageHeader } from "@/components/common/page-header";
 import { SectionCard } from "@/components/common/section-card";
 import { Dropzone } from "@/components/import/dropzone";
-import { MappingTable } from "@/components/import/mapping-table";
+import { MappingEditor } from "@/components/import/mapping-editor";
 import { PlanPreview, PlanSummary } from "@/components/import/preview";
 import { Button } from "@/components/ui/button";
 import { importData } from "@/lib/commands";
 import { CEDAR_SEED_URL, useStoreContext } from "@/lib/data/store-context";
 import { formatDateTime } from "@/lib/format";
 import {
+  buildParsedWorkbook,
   buildTemplateWorkbook,
   downloadArrayBuffer,
-  parseWorkbook,
+  isTemplateShaped,
+  mappingIssues,
   planImport,
+  rememberMappings,
+  scanWorkbook,
+  suggestMappings,
   summarize,
   workbookToArrayBuffer,
+  SHEET_NAMES,
   type ImportPlan,
   type ImportSummary,
-  type ParsedWorkbook,
+  type SheetMapping,
+  type WorkbookScan,
 } from "@/lib/import";
 import { cn } from "@/lib/utils";
 
-type Step = "upload" | "review" | "done";
+type Step = "upload" | "map" | "review" | "done";
 
 interface Loaded {
-  parsed: ParsedWorkbook;
+  scan: WorkbookScan;
+  mappings: SheetMapping[];
+}
+
+interface Planned {
   plan: ImportPlan;
+  notes: string[];
 }
 
 export function ImportPage() {
   const { store, run, reset, seed, status } = useStoreContext();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [planned, setPlanned] = useState<Planned | null>(null);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<ImportSummary | null>(null);
   const [resetting, setResetting] = useState(false);
 
-  const step: Step = result ? "done" : loaded ? "review" : "upload";
+  const step: Step = result ? "done" : planned ? "review" : loaded ? "map" : "upload";
+
+  const buildPlan = useCallback(
+    (l: Loaded): Planned | null => {
+      const { parsed, notes } = buildParsedWorkbook(l.scan, l.mappings, store);
+      const plan = planImport(parsed, store);
+      if (plan.empty) return null;
+      return { plan, notes };
+    },
+    [store],
+  );
 
   const readFile = useCallback(
     async (file: File | { name: string; buffer: ArrayBuffer }) => {
       setBusy(true);
       setResult(null);
+      setPlanned(null);
       try {
         const buffer = "buffer" in file ? file.buffer : await file.arrayBuffer();
-        const parsed = parseWorkbook(buffer, file.name);
-        const plan = planImport(parsed, store);
-        if (plan.empty) {
-          toast.error("No data found", { description: "The workbook has no rows in any recognised tab." });
+        const scan = scanWorkbook(buffer, file.name);
+        if (scan.sheets.length === 0) {
+          toast.error("No data found", { description: "The workbook has no tabs with rows." });
           setLoaded(null);
           return;
         }
-        setLoaded({ parsed, plan });
+        const mappings = suggestMappings(scan);
+        const l = { scan, mappings };
+        const clean = mappingIssues(mappings).every((i) => i.level !== "error") && (isTemplateShaped(scan, mappings) || mappings.every((m) => m.detected === "preset" || m.detected === "name"));
+        setLoaded(l);
+        if (clean) {
+          const p = buildPlan(l);
+          if (p) setPlanned(p);
+          else toast.error("No data found", { description: "The workbook has no rows in any recognised tab." });
+        }
       } catch (err) {
         toast.error("Could not read the file", { description: err instanceof Error ? err.message : String(err) });
         setLoaded(null);
@@ -64,8 +95,20 @@ export function ImportPage() {
         setBusy(false);
       }
     },
-    [store],
+    [buildPlan],
   );
+
+  const loadLegacy = useCallback(async () => {
+    setBusy(true);
+    try {
+      const res = await fetch("/seed/legacy-example.xlsx", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await readFile({ name: "legacy-example.xlsx", buffer: await res.arrayBuffer() });
+    } catch (err) {
+      toast.error("Sample file unavailable", { description: err instanceof Error ? err.message : String(err) });
+      setBusy(false);
+    }
+  }, [readFile]);
 
   const loadSample = useCallback(async () => {
     setBusy(true);
@@ -79,15 +122,32 @@ export function ImportPage() {
     }
   }, [readFile]);
 
-  function confirm() {
+  function continueToReview() {
     if (!loaded) return;
-    const { result: summary } = run(importData(loaded.plan));
+    const errors = mappingIssues(loaded.mappings).filter((i) => i.level === "error");
+    if (errors.length > 0) {
+      toast.error("Mapping incomplete", { description: errors[0].message });
+      return;
+    }
+    const p = buildPlan(loaded);
+    if (!p) {
+      toast.error("Nothing to import", { description: "No tab is mapped to anything with rows." });
+      return;
+    }
+    setPlanned(p);
+  }
+
+  function confirm() {
+    if (!loaded || !planned) return;
+    const { result: summary } = run(importData(planned.plan));
+    rememberMappings(loaded.scan, loaded.mappings);
     setResult(summary);
     toast.success("Import complete", { description: summarize(summary) });
   }
 
   function startOver() {
     setLoaded(null);
+    setPlanned(null);
     setResult(null);
   }
 
@@ -100,23 +160,29 @@ export function ImportPage() {
   }
 
   const createdProperty = useMemo(() => {
-    if (!result || !loaded) return null;
-    const row = loaded.plan.rows.properties.find((r) => r.action === "create" && r.data);
+    if (!result || !planned) return null;
+    const row = planned.plan.rows.properties.find((r) => r.action === "create" && r.data);
     if (!row?.data) return null;
     return store.properties.find((p) => p.code === row.data!.code) ?? null;
-  }, [result, loaded, store.properties]);
+  }, [result, planned, store.properties]);
+
+  const mappedSummary = useMemo(() => {
+    if (!loaded) return [];
+    return loaded.mappings
+      .filter((m) => m.entity)
+      .map((m) => ({ sheet: m.sheet, entity: SHEET_NAMES[m.entity!], mapped: m.columns.filter((c) => c.target).length, total: m.columns.length }));
+  }, [loaded]);
+
+  const rowCount = planned ? Object.values(planned.plan.counts).reduce((n, c) => n + c.create + c.update, 0) : 0;
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Data Import"
-        description="Bring in buildings, units, tenants and contracts from the template. Preview first — nothing is written until you confirm."
+        title="Import data"
+        description="Bring in your existing records — buildings, units, tenants, contracts, suppliers, assets, expenses and more — from the template or from the spreadsheets you already keep. Preview first; nothing is written until you confirm."
         crumbs={[{ label: "Settings", href: "/settings" }, { label: "Import" }]}
         actions={
-          <Button
-            variant="outline"
-            onClick={() => downloadArrayBuffer(workbookToArrayBuffer(buildTemplateWorkbook()), "rental-import-template.xlsx")}
-          >
+          <Button variant="outline" onClick={() => downloadArrayBuffer(workbookToArrayBuffer(buildTemplateWorkbook()), "rental-import-template.xlsx")}>
             <Download className="size-4" />
             Download template
           </Button>
@@ -126,7 +192,7 @@ export function ImportPage() {
       <Steps step={step} />
 
       {step === "upload" && (
-        <SectionCard title="1 · Upload" description="Accepted: .xlsx following the template (Properties, Units, Tenants, Contracts, Documents).">
+        <SectionCard title="1 · Upload" description="Any .xlsx — one tab per kind of record. Columns are matched to the system by their headers (English or Arabic); you can adjust the match before anything is imported.">
           <Dropzone onFile={readFile} busy={busy} disabled={busy || status.state !== "ready"} />
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <Sparkles className="size-3.5" />
@@ -134,39 +200,71 @@ export function ImportPage() {
             <button type="button" onClick={loadSample} disabled={busy || status.state !== "ready"} className="font-medium text-foreground hover:underline disabled:opacity-50">
               Use the sample file (cedar-residence.xlsx)
             </button>
+            <span>·</span>
+            <button type="button" onClick={loadLegacy} disabled={busy || status.state !== "ready"} className="font-medium text-foreground hover:underline disabled:opacity-50">
+              Try a messy legacy file (legacy-example.xlsx)
+            </button>
           </div>
         </SectionCard>
       )}
 
-      {step === "review" && loaded && (
+      {step === "map" && loaded && (
+        <SectionCard
+          title="2 · Map columns"
+          description="Say what each tab contains and where each column goes. Required fields the file lacks are derived where possible — building codes from names, floors from the units listed, contract numbers and end dates from start and duration."
+          action={
+            <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <FileSpreadsheet className="size-3.5" /> {loaded.scan.fileName}
+            </span>
+          }
+        >
+          <MappingEditor scan={loaded.scan} mappings={loaded.mappings} onChange={(mappings) => setLoaded({ ...loaded, mappings })} />
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+            <Button variant="ghost" onClick={startOver}>
+              Choose another file
+            </Button>
+            <Button onClick={continueToReview} disabled={busy || mappingIssues(loaded.mappings).some((i) => i.level === "error")}>
+              Check the data
+              <ArrowRight className="size-4" />
+            </Button>
+          </div>
+        </SectionCard>
+      )}
+
+      {step === "review" && loaded && planned && (
         <>
           <SectionCard
             title="2 · Column mapping"
-            description="This version reads the template headers directly. The mapping is shown for transparency."
+            description={mappedSummary.map((m) => `${m.sheet} → ${m.entity} (${m.mapped}/${m.total} columns)`).join(" · ") || "No tab mapped."}
             action={
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <FileSpreadsheet className="size-3.5" /> {loaded.parsed.fileName}
-              </span>
+              <Button variant="outline" size="sm" onClick={() => setPlanned(null)}>
+                <ArrowLeft className="size-3.5" /> Adjust mapping
+              </Button>
             }
           >
-            <MappingTable parsed={loaded.parsed} />
-            {loaded.parsed.hasPaymentsSheet && (
-              <p className="mt-3 text-xs text-muted-foreground">A Payments tab is present — it is ignored in this version; schedules are generated from contracts.</p>
+            {planned.notes.length > 0 ? (
+              <ul className="space-y-1 text-xs">
+                {planned.notes.map((n, i) => (
+                  <li key={i} className="flex items-start gap-1.5 text-muted-foreground">
+                    <Info className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{n}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">Every column matched a system field; nothing had to be derived.</p>
             )}
-            {loaded.parsed.unknownSheets.length > 0 && (
-              <p className="mt-1 text-xs text-muted-foreground">Ignored tabs: {loaded.parsed.unknownSheets.join(", ")}.</p>
-            )}
+            {planned.plan.unknownSheets.length > 0 && <p className="mt-2 text-xs text-muted-foreground">Skipped tabs: {planned.plan.unknownSheets.join(", ")}.</p>}
           </SectionCard>
 
-          <SectionCard title="3 · Preview & validate" description={<PlanSummary plan={loaded.plan} />}>
-            <PlanPreview plan={loaded.plan} />
+          <SectionCard title="3 · Preview & validate" description={<PlanSummary plan={planned.plan} />}>
+            <PlanPreview plan={planned.plan} />
             <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
               <Button variant="ghost" onClick={startOver}>
                 Choose another file
               </Button>
-              <Button onClick={confirm} disabled={busy}>
-                Import{" "}
-                {Object.values(loaded.plan.counts).reduce((n, c) => n + c.create + c.update, 0)} rows
+              <Button onClick={confirm} disabled={busy || rowCount === 0}>
+                Import {rowCount} rows
                 <ArrowRight className="size-4" />
               </Button>
             </div>
@@ -183,7 +281,7 @@ export function ImportPage() {
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold">Import complete</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                {summarize(result)} {result.paymentsGenerated > 0 && `${result.paymentsGenerated} payment rows scheduled.`} Took {result.durationMs} ms.
+                {summarize(result)} {result.paymentsGenerated > 0 && `${result.paymentsGenerated} payment rows scheduled.`} Took {result.durationMs} ms. The column mapping is remembered for the next file with the same headers.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {createdProperty && (
@@ -231,7 +329,8 @@ export function ImportPage() {
 function Steps({ step }: { step: Step }) {
   const items: { key: Step; label: string }[] = [
     { key: "upload", label: "Upload" },
-    { key: "review", label: "Map & preview" },
+    { key: "map", label: "Map columns" },
+    { key: "review", label: "Check & preview" },
     { key: "done", label: "Import" },
   ];
   const order = items.findIndex((i) => i.key === step);

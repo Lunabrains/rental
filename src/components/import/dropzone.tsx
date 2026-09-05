@@ -74,7 +74,7 @@ export function Dropzone({ onFile, disabled, busy, className }: DropzoneProps) {
         {busy ? <FileSpreadsheet className="size-5 animate-pulse" /> : <UploadCloud className="size-5" />}
       </span>
       <p className="mt-3 text-sm font-medium">{busy ? "Reading workbook…" : "Drop an .xlsx file here, or click to browse"}</p>
-      <p className="mt-1 text-xs text-muted-foreground">Use the template — one tab per entity. Nothing is written until you confirm.</p>
+      <p className="mt-1 text-xs text-muted-foreground">The template or your own spreadsheet — columns are matched to the system and you can adjust the mapping. Nothing is written until you confirm.</p>
     </div>
   );
 }

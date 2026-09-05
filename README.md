@@ -37,6 +37,12 @@ enters operating results.
 - **Operations** — inspections from checklist templates, move-in / move-out checklists that tie
   together the condition report, keys, closing readings and the deposit, keys and parking registers,
   renovation / CapEx projects with return estimates.
+- **Data entry, three ways** — create / edit forms for buildings, units, tenants and contracts
+  (plus the existing ones for assets, suppliers, expenses, work orders, inspections, keys, parking,
+  renovations); an importer that reads the owner's own spreadsheets (tabs and columns matched by
+  English / Arabic headers, an editable mapping step, derived codes / floors / contract numbers /
+  end dates, remembered mappings); and assistant instructions by text or voice ("add tenant … to
+  unit 403 …") that open the matching form prefilled for confirmation.
 - **Alerts** — a rule book (`/alerts/rules`) with thresholds and mute switches, snooze / resolve /
   dismiss, and status filters; every alert is actionable.
 - **Documents** — an entity-aware document centre with a review queue: uploads are read by rules
@@ -95,6 +101,7 @@ Try the battery: `npx tsx scripts/check-assistant.ts` (or pass your own question
 9. **AI** — "What needs my attention today?", "What is my collection rate this month?", "Which supplier has the highest repeat-issue rate?" — on every page from the floating **Ask** button.
 10. **Reports** — export the rent roll to Excel, or the whole workbook.
 11. **Import** — Settings → Import → drop `public/seed/cedar-residence.xlsx` (or click *Use the sample file*) → preview → 18 units → open Cedar Residence.
+12. **Enter data three ways** — *Add building* on Properties (generate all units at once); Import → *Try a messy legacy file* → watch the columns map themselves, adjust one, import; then tell the assistant "add a new building called Marina Bay with 6 floors and 4 units per floor" and watch the form open prefilled.
 
 ## Seed data
 

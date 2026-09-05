@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { Lightbulb } from "lucide-react";
 
 import { useActions } from "@/components/actions/action-provider";
@@ -8,8 +9,17 @@ import { Button } from "@/components/ui/button";
 import type { AssistantAnswer } from "@/lib/ai/types";
 import { cn } from "@/lib/utils";
 
+/** Answers that already opened their form — survives re-renders and remounts of the chat. */
+const AUTO_OPENED = new WeakSet<AssistantAnswer>();
+
 export function AnswerView({ answer, compact }: { answer: AssistantAnswer; compact?: boolean }) {
   const { perform } = useActions();
+  useEffect(() => {
+    const first = answer.actions?.[0];
+    if (!answer.autoOpen || !first || AUTO_OPENED.has(answer)) return;
+    AUTO_OPENED.add(answer);
+    perform(first);
+  }, [answer, perform]);
   const { ask, busy } = useAssistant();
   const rtl = answer.lang === "ar";
   const dir = rtl ? "rtl" : "ltr";

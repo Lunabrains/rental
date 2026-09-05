@@ -1,6 +1,7 @@
 export { parseWorkbook } from "./parse";
 export { planImport } from "./validate";
 export { applyImport, summarize } from "./apply";
+export { scanWorkbook, suggestMappings, remapSheet, autoMapColumns, targetsFor, mappingIssues, buildParsedWorkbook, rememberMappings, forgetPresets, isTemplateShaped, detectEntity, VIRTUAL_KEYS, type WorkbookScan, type SheetScan, type SheetMapping, type ColumnMap, type MappingIssue, type BuildResult } from "./mapping";
 export {
   buildTemplateWorkbook,
   buildWorkbook,

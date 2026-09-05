@@ -28,6 +28,11 @@ export function normalizeArabic(text: string): string {
 
 /** Multi-word phrases first (longest match wins), then single words. */
 const PHRASES: [string, string][] = [
+  // data entry
+  ["مبنى جديد", "new building"], ["بنايه جديده", "new building"], ["عماره جديده", "new building"], ["عقار جديد", "new building"], ["شقه جديده", "new unit"], ["وحده جديده", "new unit"], ["مستاجر جديد", "new tenant"], ["مستاجره جديده", "new tenant"], ["عقد جديد", "new contract"], ["مورد جديد", "new supplier"], ["اصل جديد", "new asset"], ["مصروف جديد", "new expense"], ["فاتوره جديده", "new expense"],
+  ["ضيف مستاجر", "add tenant"], ["سجل مستاجر", "add tenant"], ["ضيف مبنى", "add building"], ["ضيف بنايه", "add building"], ["ضيف شقه", "add unit"], ["ضيف عقد", "add contract"], ["سجل عقد", "add contract"], ["ضيف مورد", "add supplier"], ["ضيف مصروف", "add expense"], ["سجل مصروف", "add expense"], ["ضيف اصل", "add asset"], ["ضيف فاتوره", "add expense"],
+  ["رقم الهاتف", "phone"], ["رقم التلفون", "phone"], ["رقم الموبايل", "phone"], ["رقم الجوال", "phone"], ["رقمه", "phone"], ["رقمها", "phone"], ["بكل طابق", "per floor"], ["لكل طابق", "per floor"], ["في كل طابق", "per floor"], ["على كل طابق", "per floor"], ["بالطابق", "per floor"],
+  ["غرفتين نوم", "2 bedrooms"], ["غرفه نوم", "1 bedroom"], ["غرف نوم", "bedrooms"], ["ثلاث غرف", "3 bedrooms"], ["تلات غرف", "3 bedrooms"], ["ابتداء من", "from"], ["بدءا من", "from"], ["من تاريخ", "from"], ["لمده", "for"], ["بايجار", "rent"], ["ايجارها", "rent"], ["ايجاره", "rent"], ["متر مربع", "sqm"],
   ["ما دفع", "hasnt paid"], ["ما دفعوا", "hasnt paid"], ["ما دفعت", "hasnt paid"], ["لم يدفع", "hasnt paid"], ["لم يدفعوا", "hasnt paid"], ["لم تدفع", "hasnt paid"],
   ["مادفع", "hasnt paid"], ["ما دافع", "hasnt paid"], ["ما دافعين", "hasnt paid"], ["مش دافع", "hasnt paid"], ["مش دافعين", "hasnt paid"], ["لسا ما دفع", "hasnt paid"], ["بعد ما دفع", "hasnt paid"], ["ما سدد", "hasnt paid"], ["لم يسدد", "hasnt paid"],
   ["بيتاخر بالدفع", "pays late"], ["يتاخر بالدفع", "pays late"], ["بيتاخروا بالدفع", "pay late"], ["يتاخرون بالدفع", "pay late"], ["دفع متاخر", "pays late"], ["بيدفع متاخر", "pays late"], ["بيدفعوا متاخر", "pay late"],
@@ -77,6 +82,8 @@ const PHRASES: [string, string][] = [
 ];
 
 const WORDS: Record<string, string> = {
+  // data entry
+  اضف: "add", ضيفلي: "add", ضيفي: "add", زيد: "add", زيدلي: "add", سجلي: "register", سجللي: "register", ادخل: "add", ادخلي: "add", اسمه: "named", اسمها: "named", اسمو: "named", باسم: "named", اسم: "named", سميه: "named", سميها: "named", طوابق: "floors", الطوابق: "floors", طابقين: "2 floors", هاتف: "phone", الهاتف: "phone", تلفون: "phone", التلفون: "phone", موبايل: "phone", الموبايل: "phone", جوال: "phone", الجوال: "phone", ايميل: "email", الايميل: "email", بريد: "email", جديده: "new", الجديده: "new", مع: "with", حمام: "bathroom", حمامات: "bathrooms", متر: "sqm", مفروشه: "furnished", مفروش: "furnished", مضخه: "pump", المضخه: "pump", خزان: "tank", الخزان: "tank", سباك: "plumber", السباك: "plumber", كهربجي: "electrician", كهربائي: "electrician", الكهربجي: "electrician", ماركه: "brand", الماركه: "brand", موديل: "model", الموديل: "model", سيريال: "serial", جنسيته: "nationality", الجنسيه: "nationality", لبناني: "lebanese", لبنانيه: "lebanese", سوري: "syrian", سوريه: "syrian",
   // question words
   مين: "who", من: "who", لمين: "who", شو: "what", ماذا: "what", ما: "what", ايش: "what", شنو: "what", كيف: "how", وين: "where", اين: "where", ليش: "why", لماذا: "why",
   كم: "how many", قديش: "how much", اديش: "how much", كام: "how many", اي: "which", ايا: "which", انو: "which", ايه: "which", هل: "", عدد: "how many", رقم: "", الرقم: "",
@@ -273,6 +280,8 @@ export function isArabic(text: string): boolean {
  * understands. Unknown words (tenant names) are kept so the phonetic matcher
  * can still see them.
  */
+const NAME_END = new Set(["with", "in", "at", "on", "for", "from", "to", "into", "phone", "rent", "floors", "floor", "units", "unit", "bedrooms", "bedroom", "months", "month", "years", "year", "and", "email", "deposit", "per floor", "new", "add", "create", "register", "tenant", "building", "contract", "supplier", "asset", "expense", "nationality", "lebanese", "syrian"]);
+
 export function arabicToEnglish(text: string): string {
   let s = normalizeArabic(text);
   for (const [a, e] of NORMALIZED_PHRASES) {
@@ -280,12 +289,24 @@ export function arabicToEnglish(text: string): string {
     s = s.replace(new RegExp(`(^|\\s)${a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?=\\s|$)`, "g"), `$1 ${e} `);
   }
   const out: string[] = [];
+  // After "named" the next words are a name: keep them as written instead of
+  // translating them ("باي" would otherwise become "which").
+  let naming = false;
   for (const token of s.split(/\s+/).filter(Boolean)) {
     if (/^[a-z0-9]+$/.test(token)) {
+      if (naming && (NAME_END.has(token) || /^\d+$/.test(token))) naming = false;
       out.push(token);
       continue;
     }
     const hit = lookupWord(token);
+    if (naming) {
+      if (hit !== null && NAME_END.has(hit)) {
+        naming = false;
+        out.push(hit);
+      } else out.push(token);
+      continue;
+    }
+    if (hit === "named") naming = true;
     out.push(hit === null ? token : hit);
   }
   let english = out.join(" ").replace(/\s+/g, " ").trim();

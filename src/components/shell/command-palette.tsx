@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Building2, ClipboardCheck, ClipboardList, FileText, FolderOpen, Gauge, Plus, Receipt, Search, Truck, Users, Wallet, Wrench } from "lucide-react";
+import { Building2, ClipboardCheck, ClipboardList, DoorOpen, FileSignature, FileText, FolderOpen, Gauge, Plus, Receipt, Search, Truck, Upload, UserPlus, Users, Wallet, Wrench } from "lucide-react";
 
 import { useActions } from "@/components/actions/action-provider";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator, CommandShortcut } from "@/components/ui/command";
@@ -21,7 +21,7 @@ import { NAV_GROUPS } from "@/components/shell/nav";
 export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const store = useStore();
   const router = useRouter();
-  const { openTenant, openUnit, openProperty, openWorkOrder, openSupplier, openAsset, reviewDocument, addExpense, createWorkOrder, scheduleInspection, addAsset } = useActions();
+  const { openTenant, openUnit, openProperty, openWorkOrder, openSupplier, openAsset, reviewDocument, addExpense, createWorkOrder, scheduleInspection, addAsset, addProperty, addUnit, addTenantRecord, newContract, addSupplier } = useActions();
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -48,6 +48,12 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
   }
 
   const actions: { label: string; hint: string; icon: typeof Plus; run: () => void }[] = [
+    { label: "Add a building", hint: "Name, layout and paperwork — units can be generated in one go", icon: Building2, run: () => addProperty() },
+    { label: "Add a unit", hint: "One apartment, shop or office", icon: DoorOpen, run: () => addUnit() },
+    { label: "Add a tenant", hint: "Contact and ID — the contract can follow right away", icon: UserPlus, run: () => addTenantRecord() },
+    { label: "New contract", hint: "An existing tenant moving into a unit", icon: FileSignature, run: () => newContract() },
+    { label: "Add a supplier", hint: "Contractor, technician or company", icon: Truck, run: () => addSupplier() },
+    { label: "Import a spreadsheet", hint: "Your own Excel files — columns are matched for you", icon: Upload, run: () => router.push("/settings/import") },
     { label: "Record a payment", hint: "Pick the tenant on the payments board", icon: Receipt, run: () => router.push("/payments?status=overdue") },
     { label: "Add an expense", hint: "Invoice, bill or receipt", icon: Wallet, run: () => addExpense({}) },
     { label: "Create a work order", hint: "Repair, complaint or inspection follow-up", icon: Wrench, run: () => createWorkOrder({}) },

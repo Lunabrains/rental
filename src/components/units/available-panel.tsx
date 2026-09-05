@@ -10,7 +10,7 @@ import type { UnitDetails } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export function AvailablePanel({ details }: { details: UnitDetails }) {
-  const { addTenant, openTenant } = useActions();
+  const { addTenant, openTenant, editUnit, newContract } = useActions();
   const u = details.unit;
   const days = details.daysVacant;
   const lastContract = details.history.find((c) => c.tenantId === details.previousTenant?.id) ?? null;
@@ -75,10 +75,13 @@ export function AvailablePanel({ details }: { details: UnitDetails }) {
 
       <div className="flex flex-wrap gap-2 border-t pt-4">
         <Button onClick={() => addTenant(u.id)}>
-          <UserPlus className="size-4" /> Add tenant
+          <UserPlus className="size-4" /> New tenant
         </Button>
-        <Button variant="ghost">
-          <Pencil className="size-4" /> Edit
+        <Button variant="outline" onClick={() => newContract({ unitId: u.id })}>
+          Existing tenant
+        </Button>
+        <Button variant="ghost" onClick={() => editUnit(u.id)}>
+          <Pencil className="size-4" /> Edit unit
         </Button>
       </div>
     </div>

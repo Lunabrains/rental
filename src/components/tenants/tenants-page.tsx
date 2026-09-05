@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Search, Users } from "lucide-react";
+import { Search, UserPlus, Users } from "lucide-react";
 
 import { NeutralPill } from "@/components/common/badges";
 import { StatusBadge } from "@/components/common/status-badge";
 import { Chips } from "@/components/common/chips";
+import { useActions } from "@/components/actions/action-provider";
 import { PageHeader } from "@/components/common/page-header";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/states";
 import { useStore } from "@/lib/data/store-context";
 import { formatDate, formatMoney, initials } from "@/lib/format";
@@ -17,6 +19,7 @@ import { cn } from "@/lib/utils";
 type Filter = "current" | "former" | "all";
 
 export function TenantsPage() {
+  const { addTenantRecord } = useActions();
   const store = useStore();
   const router = useRouter();
   const [filter, setFilter] = useState<Filter>("current");
@@ -48,7 +51,15 @@ export function TenantsPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Tenants" description={`${counts.current} current · ${counts.former} former`} />
+      <PageHeader
+        title="Tenants"
+        description={`${counts.current} current · ${counts.former} former`}
+        actions={
+          <Button onClick={() => addTenantRecord()}>
+            <UserPlus className="size-4" /> Add tenant
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Chips<Filter>

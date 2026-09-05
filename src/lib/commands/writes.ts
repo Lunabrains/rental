@@ -123,7 +123,7 @@ export function recordPayment(input: RecordPaymentInput): Command<RecordPaymentR
 
 /* ------------------------------ Contract numbers -------------------------- */
 
-function nextContractNumber(store: Store, prefix: string): string {
+export function nextContractNumber(store: Store, prefix: string): string {
   let max = 0;
   for (const c of store.contracts) {
     const m = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}-(\\d+)$`, "i").exec(c.contractNumber);

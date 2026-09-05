@@ -26,6 +26,8 @@ export interface AnswerAction {
   kind: AlertActionKind;
   label: string;
   targetId: ID;
+  /** Prefilled fields for creation actions — the form still asks for confirmation. */
+  payload?: Record<string, unknown>;
 }
 
 /** Structured answer rendered as text → table/cards → recommendation → actions. */
@@ -40,6 +42,8 @@ export interface AssistantAnswer {
   /** Language the answer is written in — drives text direction and the voice. */
   lang?: Lang;
   source: "scripted" | "local" | "model" | "fallback";
+  /** Open the first action's form as soon as the answer lands (data entry by voice). */
+  autoOpen?: boolean;
 }
 
 export interface ChatTurn {

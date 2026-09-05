@@ -37,16 +37,25 @@ export function StarRating({ value, onChange, size = "md" }: { value: number | n
   );
 }
 
+export interface SupplierPrefill {
+  name?: string;
+  company?: string;
+  category?: SupplierCategory;
+  phone?: string;
+  email?: string;
+  services?: string;
+}
+
 /** Add or edit a supplier (contact, category, services, rating). */
-export function SupplierDialog({ supplierId, defaultCategory, onClose }: { supplierId?: string; defaultCategory?: SupplierCategory; onClose: () => void }) {
+export function SupplierDialog({ supplierId, defaultCategory, prefill, onClose }: { supplierId?: string; defaultCategory?: SupplierCategory; prefill?: SupplierPrefill; onClose: () => void }) {
   const { store, run } = useStoreContext();
   const existing = useMemo(() => (supplierId ? indexStore(store).supplierById.get(supplierId) ?? null : null), [store, supplierId]);
-  const [name, setName] = useState(existing?.name ?? "");
-  const [company, setCompany] = useState(existing?.company ?? "");
-  const [category, setCategory] = useState<SupplierCategory>(existing?.category ?? defaultCategory ?? "general_contractor");
-  const [phone, setPhone] = useState(existing?.phone ?? "");
-  const [email, setEmail] = useState(existing?.email ?? "");
-  const [services, setServices] = useState(existing?.services.join(", ") ?? "");
+  const [name, setName] = useState(existing?.name ?? prefill?.name ?? "");
+  const [company, setCompany] = useState(existing?.company ?? prefill?.company ?? "");
+  const [category, setCategory] = useState<SupplierCategory>(existing?.category ?? prefill?.category ?? defaultCategory ?? "general_contractor");
+  const [phone, setPhone] = useState(existing?.phone ?? prefill?.phone ?? "");
+  const [email, setEmail] = useState(existing?.email ?? prefill?.email ?? "");
+  const [services, setServices] = useState(existing?.services.join(", ") ?? prefill?.services ?? "");
   const [rating, setRating] = useState<number | null>(existing?.rating ?? null);
   const [active, setActive] = useState(existing?.active ?? true);
   const [notes, setNotes] = useState(existing?.notes ?? "");

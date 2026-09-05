@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { BellPlus, Building2, Check, CircleDollarSign, Mail, Phone, RefreshCw, Users, Wrench } from "lucide-react";
+import { BellPlus, Building2, Check, CircleDollarSign, FileText, Mail, Pencil, Phone, RefreshCw, Users, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { useActions } from "@/components/actions/action-provider";
@@ -54,7 +54,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
   const { store } = useStoreContext();
   const router = useRouter();
   const params = useSearchParams();
-  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder, openInspection, scheduleInspection } = useActions();
+  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder, openInspection, scheduleInspection, editTenant, newContract } = useActions();
   const t = useMemo(() => getTenant360(store, tenantId), [store, tenantId]);
   const [preview, setPreview] = useState<StoredDocument | null>(null);
 
@@ -123,6 +123,14 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
         }
         actions={
           <>
+            <Button variant="outline" onClick={() => editTenant(tenant.id)}>
+              <Pencil className="size-4" /> Edit
+            </Button>
+            {!current && (
+              <Button variant="outline" onClick={() => newContract({ tenantId: tenant.id })}>
+                <FileText className="size-4" /> New contract
+              </Button>
+            )}
             <Button variant="outline" onClick={() => createReminder({ entityType: "tenant", entityId: tenant.id, label: tenant.fullName, title: `Call ${tenant.fullName}` })}>
               <BellPlus className="size-4" /> Reminder
             </Button>

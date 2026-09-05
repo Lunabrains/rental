@@ -23,6 +23,7 @@ import { arabicToEnglish, findTenantsArabic } from "./arabic";
 import { BUILDING_WORDS, findProperty, normalizeQuestion } from "./entities";
 import { detectLang, localizeAlert, strings, type Lang, type Strings } from "./i18n";
 import { answerV2 } from "./answers-v2";
+import { entryIntent } from "./entry-intents";
 import { answerScripted, localizeActionLabel, matchScripted, suggestedQuestions } from "./scripted";
 import type { AnswerAction, AssistantAnswer, PageContext } from "./types";
 
@@ -546,6 +547,10 @@ export function answerLocally(question: string, store: Store, context: PageConte
   const scoped: PageContext = e.propertyNamed && e.property ? { ...context, propertyId: e.property.id, propertyName: e.property.name } : context;
   const namedScope = e.propertyNamed ? e.property : null;
   const expiringQuestion = (days: number) => `contracts in the next ${days} days ${english}`;
+
+  // Data entry by instruction ("add a new building called…") opens a prefilled form — the assistant never writes on its own.
+  const entry = entryIntent(english, q, store, { property: namedScope ?? e.property, tenant: e.tenant }, lang);
+  if (entry) return entry;
 
   // Second-generation intents (finance, maintenance, suppliers, forecast, briefing, safe actions) go first — they are more specific.
   const v2 = answerV2(q, store, scoped, { property: e.property, propertyNamed: e.propertyNamed, tenant: e.tenant, unitNumber: e.unitNumber, days: e.days }, lang);

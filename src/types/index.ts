@@ -923,13 +923,22 @@ export type AlertActionKind =
   | "settle_deposit"
   | "complete_reminder"
   | "create_reminder"
-  | "resolve_alert";
+  | "resolve_alert"
+  | "create_property"
+  | "create_unit"
+  | "create_tenant"
+  | "create_contract"
+  | "create_asset"
+  | "create_expense"
+  | "create_supplier";
 
 export interface AlertAction {
   kind: AlertActionKind;
   label: string;
-  /** Entity the action operates on (payment id, contract id, unit id …). */
+  /** Entity the action operates on (payment id, contract id, unit id …); "new" for creation actions. */
   targetId: ID;
+  /** Prefilled fields for creation actions — the form still asks for confirmation. */
+  payload?: Record<string, unknown>;
 }
 
 export type AlertOrigin = "rule" | "ai" | "manual";
@@ -1000,6 +1009,10 @@ export type ActivityType =
   | "tenant_added"
   | "tenant_updated"
   | "unit_updated"
+  | "unit_added"
+  | "property_added"
+  | "property_updated"
+  | "contract_created"
   | "unit_became_available"
   | "document_added"
   | "document_deleted"

@@ -10,13 +10,14 @@ import { ReminderDialog, type ReminderTarget } from "@/components/flows/reminder
 import { RenewalDecisionDialog } from "@/components/flows/renewal-decision-dialog";
 import { PaymentDetailDialog } from "@/components/payments/payment-detail-dialog";
 import { DepositDialog } from "@/components/finance/deposit-dialog";
-import { AssetDialog, LogServiceDialog, PlanDialog } from "@/components/maintenance/asset-dialogs";
-import { SupplierDialog } from "@/components/maintenance/supplier-dialog";
+import { AssetDialog, LogServiceDialog, PlanDialog, type AssetPrefill } from "@/components/maintenance/asset-dialogs";
+import { SupplierDialog, type SupplierPrefill } from "@/components/maintenance/supplier-dialog";
 import { CompleteInspectionDialog, ScheduleInspectionDialog, type InspectionPrefill } from "@/components/operations/inspection-dialogs";
 import { IssueKeyDialog, KeyDialog } from "@/components/operations/key-dialogs";
 import { AssignParkingDialog, ParkingSpaceDialog } from "@/components/operations/parking-dialogs";
 import { CompleteRenovationDialog, RenovationDialog, type RenovationPrefill } from "@/components/operations/renovation-dialogs";
 import { DocumentReviewDialog } from "@/components/documents/document-review-dialog";
+import { ContractDialog, PropertyDialog, TenantDialog, UnitDialog, type ContractPrefill, type PropertyPrefill, type TenantPrefill, type UnitPrefill } from "@/components/flows/entity-dialogs";
 import { WorkOrderDialog, WorkOrderStatusDialog, type WorkOrderPrefill } from "@/components/maintenance/work-order-dialogs";
 import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
@@ -43,10 +44,10 @@ type Flow =
   | { kind: "deposit"; depositId: ID }
   | { kind: "work_order"; workOrderId?: ID; prefill?: WorkOrderPrefill }
   | { kind: "work_order_status"; workOrderId: ID; initial?: WorkOrderStatus }
-  | { kind: "asset"; assetId?: ID; propertyId?: ID | null }
+  | { kind: "asset"; assetId?: ID; propertyId?: ID | null; prefill?: AssetPrefill }
   | { kind: "plan"; planId?: ID; defaults?: { propertyId?: ID | null; assetId?: ID | null } }
   | { kind: "log_service"; planId: ID }
-  | { kind: "supplier"; supplierId?: ID; category?: SupplierCategory }
+  | { kind: "supplier"; supplierId?: ID; category?: SupplierCategory; prefill?: SupplierPrefill }
   | { kind: "inspection_schedule"; prefill?: InspectionPrefill }
   | { kind: "inspection_complete"; inspectionId: ID }
   | { kind: "key"; keyId?: ID; defaults?: { propertyId?: ID | null; unitId?: ID | null } }
@@ -56,6 +57,10 @@ type Flow =
   | { kind: "renovation"; renovationId?: ID; prefill?: RenovationPrefill }
   | { kind: "renovation_complete"; renovationId: ID }
   | { kind: "document_review"; documentId: ID }
+  | { kind: "property"; propertyId?: ID; prefill?: PropertyPrefill }
+  | { kind: "unit"; unitId?: ID; prefill?: UnitPrefill }
+  | { kind: "tenant_record"; tenantId?: ID; prefill?: TenantPrefill }
+  | { kind: "contract_new"; prefill?: ContractPrefill }
   | null;
 
 export interface ActionsContextValue {
@@ -81,13 +86,13 @@ export interface ActionsContextValue {
   openWorkOrder: (workOrderId: ID) => void;
   workOrderStatus: (workOrderId: ID, initial?: WorkOrderStatus) => void;
   openAsset: (assetId: ID) => void;
-  addAsset: (propertyId?: ID | null) => void;
+  addAsset: (propertyId?: ID | null, prefill?: AssetPrefill) => void;
   editAsset: (assetId: ID) => void;
   addPlan: (defaults?: { propertyId?: ID | null; assetId?: ID | null }) => void;
   editPlan: (planId: ID) => void;
   logService: (planId: ID) => void;
   openSupplier: (supplierId: ID) => void;
-  addSupplier: (category?: SupplierCategory) => void;
+  addSupplier: (category?: SupplierCategory, prefill?: SupplierPrefill) => void;
   editSupplier: (supplierId: ID) => void;
   openInspection: (inspectionId: ID) => void;
   scheduleInspection: (prefill?: InspectionPrefill) => void;
@@ -103,6 +108,13 @@ export interface ActionsContextValue {
   editRenovation: (renovationId: ID) => void;
   completeRenovation: (renovationId: ID) => void;
   reviewDocument: (documentId: ID) => void;
+  addProperty: (prefill?: PropertyPrefill) => void;
+  editProperty: (propertyId: ID) => void;
+  addUnit: (prefill?: UnitPrefill) => void;
+  editUnit: (unitId: ID) => void;
+  addTenantRecord: (prefill?: TenantPrefill) => void;
+  editTenant: (tenantId: ID) => void;
+  newContract: (prefill?: ContractPrefill) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -166,13 +178,13 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const openWorkOrder = useCallback((workOrderId: ID) => router.push(`/maintenance/${workOrderId}`), [router]);
   const workOrderStatus = useCallback((workOrderId: ID, initial?: WorkOrderStatus) => setFlow({ kind: "work_order_status", workOrderId, initial }), []);
   const openAsset = useCallback((assetId: ID) => router.push(`/assets/${assetId}`), [router]);
-  const addAsset = useCallback((propertyId?: ID | null) => setFlow({ kind: "asset", propertyId }), []);
+  const addAsset = useCallback((propertyId?: ID | null, prefill?: AssetPrefill) => setFlow({ kind: "asset", propertyId, prefill }), []);
   const editAsset = useCallback((assetId: ID) => setFlow({ kind: "asset", assetId }), []);
   const addPlan = useCallback((defaults?: { propertyId?: ID | null; assetId?: ID | null }) => setFlow({ kind: "plan", defaults }), []);
   const editPlan = useCallback((planId: ID) => setFlow({ kind: "plan", planId }), []);
   const logService = useCallback((planId: ID) => setFlow({ kind: "log_service", planId }), []);
   const openSupplier = useCallback((supplierId: ID) => router.push(`/suppliers/${supplierId}`), [router]);
-  const addSupplier = useCallback((category?: SupplierCategory) => setFlow({ kind: "supplier", category }), []);
+  const addSupplier = useCallback((category?: SupplierCategory, prefill?: SupplierPrefill) => setFlow({ kind: "supplier", category, prefill }), []);
   const editSupplier = useCallback((supplierId: ID) => setFlow({ kind: "supplier", supplierId }), []);
   const openInspection = useCallback((inspectionId: ID) => router.push(`/inspections/${inspectionId}`), [router]);
   const scheduleInspection = useCallback((prefill?: InspectionPrefill) => setFlow({ kind: "inspection_schedule", prefill }), []);
@@ -188,6 +200,13 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const editRenovation = useCallback((renovationId: ID) => setFlow({ kind: "renovation", renovationId }), []);
   const completeRenovation = useCallback((renovationId: ID) => setFlow({ kind: "renovation_complete", renovationId }), []);
   const reviewDocument = useCallback((documentId: ID) => setFlow({ kind: "document_review", documentId }), []);
+  const addProperty = useCallback((prefill?: PropertyPrefill) => setFlow({ kind: "property", prefill }), []);
+  const editProperty = useCallback((propertyId: ID) => setFlow({ kind: "property", propertyId }), []);
+  const addUnit = useCallback((prefill?: UnitPrefill) => setFlow({ kind: "unit", prefill }), []);
+  const editUnit = useCallback((unitId: ID) => setFlow({ kind: "unit", unitId }), []);
+  const addTenantRecord = useCallback((prefill?: TenantPrefill) => setFlow({ kind: "tenant_record", prefill }), []);
+  const editTenant = useCallback((tenantId: ID) => setFlow({ kind: "tenant_record", tenantId }), []);
+  const newContract = useCallback((prefill?: ContractPrefill) => setFlow({ kind: "contract_new", prefill }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -262,6 +281,20 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return openInspection(action.targetId);
         case "view_renovation":
           return openRenovation(action.targetId);
+        case "create_property":
+          return addProperty(action.payload as PropertyPrefill | undefined);
+        case "create_unit":
+          return addUnit(action.payload as UnitPrefill | undefined);
+        case "create_tenant":
+          return addTenantRecord(action.payload as TenantPrefill | undefined);
+        case "create_contract":
+          return newContract(action.payload as ContractPrefill | undefined);
+        case "create_expense":
+          return addExpense((action.payload ?? {}) as ExpensePrefill);
+        case "create_asset":
+          return addAsset(((action.payload ?? {}) as { propertyId?: ID | null }).propertyId ?? null, action.payload as AssetPrefill | undefined);
+        case "create_supplier":
+          return addSupplier(((action.payload ?? {}) as { category?: SupplierCategory }).category, action.payload as SupplierPrefill | undefined);
         case "create_reminder": {
           const i = indexStore(store);
           const t = i.tenantById.get(action.targetId);
@@ -331,12 +364,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, editPlan, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, router, store, run],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, editPlan, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, addProperty, addUnit, addTenantRecord, newContract, addExpense, addAsset, addSupplier, router, store, run],
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, addProperty, editProperty, addUnit, editUnit, addTenantRecord, editTenant, newContract, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, addProperty, editProperty, addUnit, editUnit, addTenantRecord, editTenant, newContract, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -349,15 +382,19 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "renewal_decision" && <RenewalDecisionDialog key={flow.contractId} contractId={flow.contractId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "contract_terms" && <ContractTermsDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
       {flow?.kind === "work_order" && <WorkOrderDialog key={flow.workOrderId ?? "new"} workOrderId={flow.workOrderId} prefill={flow.prefill} onClose={closeFlow} />}
-      {flow?.kind === "asset" && <AssetDialog key={flow.assetId ?? "new"} assetId={flow.assetId} defaultPropertyId={flow.propertyId} onClose={closeFlow} />}
+      {flow?.kind === "asset" && <AssetDialog key={flow.assetId ?? "new"} assetId={flow.assetId} defaultPropertyId={flow.propertyId} prefill={flow.prefill} onClose={closeFlow} />}
       {flow?.kind === "plan" && <PlanDialog key={flow.planId ?? "new"} planId={flow.planId} defaults={flow.defaults} onClose={closeFlow} />}
-      {flow?.kind === "supplier" && <SupplierDialog key={flow.supplierId ?? "new"} supplierId={flow.supplierId} defaultCategory={flow.category} onClose={closeFlow} />}
+      {flow?.kind === "supplier" && <SupplierDialog key={flow.supplierId ?? "new"} supplierId={flow.supplierId} defaultCategory={flow.category} prefill={flow.prefill} onClose={closeFlow} />}
       {flow?.kind === "inspection_schedule" && <ScheduleInspectionDialog prefill={flow.prefill} onClose={closeFlow} onScheduled={(id) => router.push(`/inspections/${id}`)} />}
       {flow?.kind === "inspection_complete" && <CompleteInspectionDialog key={flow.inspectionId} inspectionId={flow.inspectionId} onClose={closeFlow} />}
       {flow?.kind === "key" && <KeyDialog key={flow.keyId ?? "new"} keyId={flow.keyId} defaults={flow.defaults} onClose={closeFlow} />}
       {flow?.kind === "issue_key" && <IssueKeyDialog key={flow.keyId} keyId={flow.keyId} defaultTenantId={flow.tenantId} onClose={closeFlow} />}
       {flow?.kind === "parking" && <ParkingSpaceDialog key={flow.spaceId ?? "new"} spaceId={flow.spaceId} defaultPropertyId={flow.propertyId} onClose={closeFlow} />}
       {flow?.kind === "renovation" && <RenovationDialog key={flow.renovationId ?? "new"} renovationId={flow.renovationId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/renovations/${id}`)} />}
+      {flow?.kind === "property" && <PropertyDialog key={flow.propertyId ?? "new"} propertyId={flow.propertyId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/properties/${id}`)} />}
+      {flow?.kind === "unit" && <UnitDialog key={flow.unitId ?? "new"} unitId={flow.unitId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/units/${id}`)} />}
+      {flow?.kind === "tenant_record" && <TenantDialog key={flow.tenantId ?? "new"} tenantId={flow.tenantId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/tenants/${id}`)} onContract={(p) => setFlow({ kind: "contract_new", prefill: p })} />}
+      {flow?.kind === "contract_new" && <ContractDialog prefill={flow.prefill} onClose={closeFlow} />}
       {flow?.kind === "document_review" && <DocumentReviewDialog key={flow.documentId} documentId={flow.documentId} onClose={closeFlow} />}
       {flow?.kind === "renovation_complete" && <CompleteRenovationDialog key={flow.renovationId} renovationId={flow.renovationId} onClose={closeFlow} />}
       {flow?.kind === "assign_parking" && <AssignParkingDialog key={flow.spaceId} spaceId={flow.spaceId} onClose={closeFlow} />}

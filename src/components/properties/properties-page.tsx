@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Building2, Search } from "lucide-react";
+import { Building2, Search, Plus } from "lucide-react";
 
+import { useActions } from "@/components/actions/action-provider";
 import { PageHeader } from "@/components/common/page-header";
+import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/states";
 import { PropertyCard } from "@/components/properties/property-card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +25,7 @@ const SORTS: { key: SortKey; label: string; fn: (a: PropertySummary, b: Property
 ];
 
 export function PropertiesPage() {
+  const { addProperty } = useActions();
   const store = useStore();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<SortKey>("name");
@@ -49,6 +52,9 @@ export function PropertiesPage() {
         description={`${all.length} buildings · ${totals.units} units · ${formatPercent(totals.occupancy)} occupied · ${formatMoney(totals.revenue)}/month`}
         actions={
           <>
+            <Button onClick={() => addProperty()}>
+              <Plus className="size-4" /> Add building
+            </Button>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input

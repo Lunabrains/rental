@@ -9,6 +9,7 @@ import {
   Hammer,
   KeyRound,
   Truck,
+  Upload,
   CreditCard,
   Receipt,
   FileText,
@@ -108,7 +109,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Tools",
     items: [
       { href: "/ai", label: "AI Assistant", icon: Sparkles, match: startsWith("/ai") },
-      { href: "/settings", label: "Settings", icon: Settings, match: startsWith("/settings") },
+      { href: "/settings/import", label: "Import data", icon: Upload, match: startsWith("/settings/import") },
+      { href: "/settings", label: "Settings", icon: Settings, match: (p) => p === "/settings" },
     ],
   },
 ];

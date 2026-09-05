@@ -682,6 +682,14 @@ export function knownActionTarget(store: Store, kind: string, id: ID): boolean {
       return id === "portfolio" || idx.tenantById.has(id) || idx.unitById.has(id) || idx.propertyById.has(id);
     case "resolve_alert":
       return store.alerts.some((a) => a.id === id);
+    case "create_property":
+    case "create_unit":
+    case "create_tenant":
+    case "create_contract":
+    case "create_asset":
+    case "create_expense":
+    case "create_supplier":
+      return id === "new";
     default:
       return false;
   }

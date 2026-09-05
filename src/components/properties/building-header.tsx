@@ -1,4 +1,9 @@
-import { MapPin } from "lucide-react";
+"use client";
+
+import { MapPin, Pencil, Plus } from "lucide-react";
+
+import { useActions } from "@/components/actions/action-provider";
+import { Button } from "@/components/ui/button";
 
 import { PageHeader } from "@/components/common/page-header";
 import { ScoreBadge } from "@/components/common/score";
@@ -22,6 +27,7 @@ function Stat({ label, value, tone }: { label: string; value: React.ReactNode; t
 export function BuildingHeader({ summary, health, lowOccupancyThreshold }: { summary: PropertySummary; health?: HealthScore; lowOccupancyThreshold: number }) {
   const p = summary.property;
   const weak = summary.occupancy < lowOccupancyThreshold;
+  const { editProperty, addUnit } = useActions();
 
   return (
     <div className="space-y-4">
@@ -31,9 +37,19 @@ export function BuildingHeader({ summary, health, lowOccupancyThreshold }: { sum
         description={
           <span className="inline-flex items-center gap-1">
             <MapPin className="size-3.5" />
-            {p.address}, {p.district}, {p.city}
+            {[p.address, p.district, p.city].filter(Boolean).join(", ") || "No address yet"}
             {p.yearBuilt && <span className="text-muted-foreground/70"> · built {p.yearBuilt}</span>}
           </span>
+        }
+        actions={
+          <>
+            <Button variant="outline" onClick={() => editProperty(p.id)}>
+              <Pencil className="size-4" /> Edit building
+            </Button>
+            <Button variant="outline" onClick={() => addUnit({ propertyId: p.id })}>
+              <Plus className="size-4" /> Add unit
+            </Button>
+          </>
         }
       />
       <div className="overflow-hidden rounded-lg border bg-card shadow-xs">

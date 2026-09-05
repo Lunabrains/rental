@@ -17,20 +17,33 @@ import { formatDate, formatMoney, labelize } from "@/lib/format";
 import { planRow } from "@/lib/queries";
 import { ASSET_STATUSES, ASSET_TYPES, type AssetStatus, type AssetType } from "@/types";
 
+export interface AssetPrefill {
+  propertyId?: string | null;
+  unitId?: string | null;
+  name?: string;
+  assetType?: AssetType;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+  purchaseCost?: number;
+  installationDate?: string;
+  warrantyExpiry?: string;
+}
+
 /** Register or edit a building asset. */
-export function AssetDialog({ assetId, defaultPropertyId, onClose }: { assetId?: string; defaultPropertyId?: string | null; onClose: () => void }) {
+export function AssetDialog({ assetId, defaultPropertyId, prefill, onClose }: { assetId?: string; defaultPropertyId?: string | null; prefill?: AssetPrefill; onClose: () => void }) {
   const { store, run } = useStoreContext();
   const existing = useMemo(() => (assetId ? indexStore(store).assetById.get(assetId) ?? null : null), [store, assetId]);
-  const [propertyId, setPropertyId] = useState<string | null>(existing?.propertyId ?? defaultPropertyId ?? store.properties[0]?.id ?? null);
-  const [unitId, setUnitId] = useState<string | null>(existing?.unitId ?? null);
-  const [assetType, setAssetType] = useState<AssetType>(existing?.assetType ?? "elevator");
-  const [name, setName] = useState(existing?.name ?? "");
-  const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? "");
-  const [model, setModel] = useState(existing?.model ?? "");
-  const [serial, setSerial] = useState(existing?.serialNumber ?? "");
-  const [installed, setInstalled] = useState(existing?.installationDate ?? "");
-  const [cost, setCost] = useState(existing?.purchaseCost ?? 0);
-  const [warranty, setWarranty] = useState(existing?.warrantyExpiry ?? "");
+  const [propertyId, setPropertyId] = useState<string | null>(existing?.propertyId ?? prefill?.propertyId ?? defaultPropertyId ?? store.properties[0]?.id ?? null);
+  const [unitId, setUnitId] = useState<string | null>(existing?.unitId ?? prefill?.unitId ?? null);
+  const [assetType, setAssetType] = useState<AssetType>(existing?.assetType ?? prefill?.assetType ?? "elevator");
+  const [name, setName] = useState(existing?.name ?? prefill?.name ?? "");
+  const [manufacturer, setManufacturer] = useState(existing?.manufacturer ?? prefill?.manufacturer ?? "");
+  const [model, setModel] = useState(existing?.model ?? prefill?.model ?? "");
+  const [serial, setSerial] = useState(existing?.serialNumber ?? prefill?.serialNumber ?? "");
+  const [installed, setInstalled] = useState(existing?.installationDate ?? prefill?.installationDate ?? "");
+  const [cost, setCost] = useState(existing?.purchaseCost ?? prefill?.purchaseCost ?? 0);
+  const [warranty, setWarranty] = useState(existing?.warrantyExpiry ?? prefill?.warrantyExpiry ?? "");
   const [supplierId, setSupplierId] = useState<string | null>(existing?.supplierId ?? null);
   const [status, setStatus] = useState<AssetStatus>(existing?.status ?? "operational");
   const [notes, setNotes] = useState(existing?.notes ?? "");

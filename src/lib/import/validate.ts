@@ -659,6 +659,12 @@ function planTenants(rows: RawRow[], ctx: Ctx): PlannedRow<"tenants">[] {
       r.warn("phone", "No phone — matched on id_number instead");
     }
     if (!idNumber) r.warn("id_number", "No ID number on file");
+    // Old files often carry a single name — keep the row, flag it.
+    if (!lastName && firstName) {
+      const i = r.issues.findIndex((x) => x.column === "last_name" && x.level === "error");
+      if (i >= 0) r.issues.splice(i, 1);
+      r.warn("last_name", "No last name on file");
+    }
 
     const data: TenantDraft = {
       firstName,

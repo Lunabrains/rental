@@ -54,7 +54,7 @@ export function UnitPage({ unitId }: { unitId: string }) {
   const store = useStore();
   const router = useRouter();
   const params = useSearchParams();
-  const { openUnit, recordPayment, renewContract, markAsLeaving, addTenant, openTenant } = useActions();
+  const { openUnit, recordPayment, renewContract, markAsLeaving, addTenant, openTenant, editUnit } = useActions();
   const u = useMemo(() => getUnit360(store, unitId), [store, unitId]);
   const [preview, setPreview] = useState<StoredDocument | null>(null);
 
@@ -103,6 +103,9 @@ export function UnitPage({ unitId }: { unitId: string }) {
         description={`${u.property.name} · floor ${u.unit.floor} · ${u.unit.bedrooms} BR · ${u.unit.bathrooms} bath · ${u.unit.sizeSqm} m² · ${u.unit.furnished ? "furnished" : "unfurnished"} · condition ${labelize(u.unit.condition).toLowerCase()}`}
         actions={
           <>
+            <Button variant="outline" onClick={() => editUnit(u.unit.id)}>
+              Edit unit
+            </Button>
             <Button variant="outline" onClick={() => openUnit(u.unit.id)}>
               <Building2 className="size-4" /> Building grid
             </Button>
