@@ -1,8 +1,8 @@
 "use client";
 
-import { Download, ExternalLink, Eye, FileText, IdCard, Receipt, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { Download, ExternalLink, Eye, FileText, IdCard, Receipt } from "lucide-react";
 
+import { AttachmentUploader } from "@/components/common/attachment-uploader";
 import { EmptyState } from "@/components/common/states";
 import { buildDocumentHtml, openDocument, downloadDocument } from "@/components/documents/document-preview";
 import { Button } from "@/components/ui/button";
@@ -65,11 +65,7 @@ export function DocumentRow({ doc, onPreview }: { doc: StoredDocument; onPreview
 }
 
 export function DocumentsTab({ details, onPreview }: { details: UnitDetails; onPreview: (doc: StoredDocument) => void }) {
-  const docs = details.documents.slice().sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
-
-  function upload() {
-    toast("Upload is not wired in this demo", { description: "Documents come in through the import template." });
-  }
+  const docs = details.documents.filter((d) => !d.deleted).slice().sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
 
   return (
     <div className="space-y-3">
@@ -77,9 +73,7 @@ export function DocumentsTab({ details, onPreview }: { details: UnitDetails; onP
         <span className="text-xs text-muted-foreground">
           {docs.length} document{docs.length === 1 ? "" : "s"}
         </span>
-        <Button size="sm" variant="outline" onClick={upload}>
-          <Upload className="size-4" /> Upload
-        </Button>
+        <AttachmentUploader compact links={{ unitId: details.unit.id, tenantId: details.tenant?.id ?? null, contractId: details.contract?.id ?? null, propertyId: details.property.id }} label="Upload" />
       </div>
       {docs.length === 0 ? (
         <EmptyState compact icon={FileText} title="No documents yet" description="ID, passport, signed contract and receipts will appear here." />

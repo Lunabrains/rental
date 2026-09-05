@@ -364,7 +364,7 @@ export interface TimelineEvent {
   title: string;
   detail: string | null;
   tone: TimelineTone;
-  kind: "contract" | "payment" | "document" | "activity" | "unit";
+  kind: "contract" | "payment" | "document" | "activity" | "unit" | "maintenance" | "asset" | "inspection" | "renovation" | "expense" | "deposit";
 }
 
 /**

@@ -1,8 +1,10 @@
 import { MapPin } from "lucide-react";
 
 import { PageHeader } from "@/components/common/page-header";
+import { ScoreBadge } from "@/components/common/score";
 import { BuildingArt } from "@/components/properties/building-art";
 import { formatMoney, formatPercent } from "@/lib/format";
+import type { HealthScore } from "@/lib/derived/metrics";
 import type { PropertySummary } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +19,7 @@ function Stat({ label, value, tone }: { label: string; value: React.ReactNode; t
   );
 }
 
-export function BuildingHeader({ summary, lowOccupancyThreshold }: { summary: PropertySummary; lowOccupancyThreshold: number }) {
+export function BuildingHeader({ summary, health, lowOccupancyThreshold }: { summary: PropertySummary; health?: HealthScore; lowOccupancyThreshold: number }) {
   const p = summary.property;
   const weak = summary.occupancy < lowOccupancyThreshold;
 
@@ -46,7 +48,7 @@ export function BuildingHeader({ summary, lowOccupancyThreshold }: { summary: Pr
             <Stat label="Occupancy" value={formatPercent(summary.occupancy)} tone={weak ? "warning" : undefined} />
             <Stat label="Revenue / mo" value={formatMoney(summary.monthlyRevenue)} />
             <Stat label="Outstanding" value={summary.outstanding > 0 ? formatMoney(summary.outstanding) : "—"} tone={summary.outstanding > 0 ? "critical" : undefined} />
-            <Stat label="Score" value={summary.score} tone={summary.score >= 90 ? "success" : summary.score < 85 ? "warning" : undefined} />
+            <Stat label="Health" value={health ? <ScoreBadge score={health.score} label="Building health" components={health.components} caption="Weighted: collections 25 · occupancy 20 · profitability 20 · maintenance 15 · budget 10 · compliance 10." /> : summary.score} />
           </div>
         </div>
       </div>

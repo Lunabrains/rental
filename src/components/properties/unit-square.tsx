@@ -20,7 +20,7 @@ interface UnitSquareProps {
 export function UnitSquare({ cell, selected, highlighted, dimmed, onClick }: UnitSquareProps) {
   const { unit, tenant } = cell;
   const rented = unit.status === "rented";
-  const other = unit.status === "maintenance" || unit.status === "reserved";
+  const other = unit.status === "maintenance" || unit.status === "reserved" || unit.status === "renovation" || unit.status === "unavailable";
   const label = rented && tenant ? shortName(tenant.fullName) : other ? unit.status : "Available";
 
   return (

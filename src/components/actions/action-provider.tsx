@@ -28,6 +28,8 @@ export interface ActionsContextValue {
   openUnit: (unitId: ID, tab?: DrawerTab) => void;
   /** Open the drawer over the current page — used by tables. */
   openUnitHere: (unitId: ID, tab?: DrawerTab) => void;
+  /** The unit's full page (unit 360°). */
+  openUnitPage: (unitId: ID, tab?: string) => void;
   openTenant: (tenantId: ID) => void;
   openProperty: (propertyId: ID) => void;
   openContract: (contractId: ID) => void;
@@ -71,6 +73,7 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
     [router, pathname],
   );
 
+  const openUnitPage = useCallback((unitId: ID, tab?: string) => router.push(`/units/${unitId}${tab ? `?tab=${tab}` : ""}`), [router]);
   const openTenant = useCallback((tenantId: ID) => router.push(`/tenants/${tenantId}`), [router]);
   const openProperty = useCallback((propertyId: ID) => router.push(`/properties/${propertyId}`), [router]);
 
@@ -135,8 +138,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument],
   );
 
   return (

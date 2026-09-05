@@ -204,6 +204,13 @@ function ReceiptPage({ ctx, doc }: { ctx: DocContext; doc: StoredDocument }) {
 export function DocumentBody({ doc }: { doc: StoredDocument }) {
   const store = useStore();
   const ctx = contextFor(doc, store);
+  if (doc.dataUrl) {
+    if (doc.mimeType.startsWith("image/")) {
+      // eslint-disable-next-line @next/next/no-img-element
+      return <img src={doc.dataUrl} alt={doc.title} className="mx-auto max-h-[60vh] rounded-md" />;
+    }
+    return <iframe src={doc.dataUrl} title={doc.title} className="h-[60vh] w-full rounded-md bg-white" />;
+  }
   if (doc.kind === "id" || doc.kind === "passport") return <IdCard ctx={ctx} passport={doc.kind === "passport"} />;
   if (doc.kind === "receipt") return <ReceiptPage ctx={ctx} doc={doc} />;
   return <ContractPage ctx={ctx} doc={doc} />;
@@ -226,7 +233,7 @@ export function DocumentPreview({ doc, onClose }: { doc: StoredDocument | null; 
               <DocumentBody doc={doc} />
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => openDocument(buildDocumentHtml(doc, store))}>
+              <Button variant="outline" onClick={() => (doc.dataUrl ? window.open(doc.dataUrl, "_blank", "noopener") : openDocument(buildDocumentHtml(doc, store)))}>
                 <ExternalLink className="size-4" /> Open
               </Button>
               <Button onClick={() => downloadDocument(doc, buildDocumentHtml(doc, store))}>

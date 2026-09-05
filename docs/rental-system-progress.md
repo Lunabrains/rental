@@ -5,7 +5,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 
 - [x] Phase 0 — repository audit (`docs/implementation-notes.md`)
 - [x] Phase 1 — data foundation & shared infrastructure
-- [ ] Phase 2 — buildings & unit 360°
+- [x] Phase 2 — buildings & unit 360°
 - [ ] Phase 3 — tenant 360° & contract intelligence
 - [ ] Phase 4 — rent roll & payment intelligence
 - [ ] Phase 5 — expenses & profitability
@@ -38,3 +38,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Shared UI: `StatusBadge`, `Timeline`, entity selects, `AttachmentUploader`, `DataTable` (sort / search / paging / CSV / Excel), `ScoreBadge`/`ScoreBreakdown`, export helpers (`src/lib/export.ts`).
 - Tests: `npm test` (node:test + tsx) — 40 tests over formulas, derivation, alerts, schedules, allocation, import round-trips and validation.
 - Unresolved: uploaded files live as object URLs for the session only (no storage backend); AI tool layer not yet extended (Phase 16).
+
+## Phase 2 — buildings & unit 360°
+- Building page (`src/components/properties/building-page.tsx`, `building-tabs.tsx`): tabs Overview / Units / Financials / Maintenance / Assets / Documents / Timeline addressed by `?view=`; the elevation grid stays the landing view; Units tab gains a list layout (`unit-list.tsx`) with tenant, rent, expiry, outstanding, maintenance and condition; header shows the decomposable health score.
+- Queries: `src/lib/queries/buildings.ts` (overview, financials with NOI/budget/category breakdown, building timeline), `src/lib/queries/units.ts` (`getUnit360`: deposit, reliability, health, work orders, inspections, meters, keys, parking, renovations, vacancy history, timeline).
+- Unit 360° page at `/units/[id]` (`src/components/units/unit-page.tsx`): Overview / Tenant & contract / Payments / Maintenance / Inspections / Utilities / Documents / History; drawer links to it.
+- Documents: real uploads through `AttachmentUploader` (drawer tab, building documents); uploaded files preview from their object URL.
+- Unresolved: work-order / asset rows do not open detail pages yet (Phases 7–8); the timeline is not yet on tenants/contracts/assets (§13 continues with those modules).

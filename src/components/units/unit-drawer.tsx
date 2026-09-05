@@ -40,7 +40,7 @@ const TABS: { key: DrawerTab; label: string }[] = [
  */
 export function UnitDrawer({ unitId, tab, onTabChange, onClose }: UnitDrawerProps) {
   const store = useStore();
-  const { openTenant } = useActions();
+  const { openTenant, openUnitPage } = useActions();
   const [preview, setPreview] = useState<StoredDocument | null>(null);
 
   const details = useMemo(() => (unitId ? getUnitDetails(store, unitId) : null), [store, unitId]);
@@ -112,18 +112,30 @@ export function UnitDrawer({ unitId, tab, onTabChange, onClose }: UnitDrawerProp
                       <ActivityTab events={timeline} />
                     </TabsContent>
                   </div>
-                  {details.tenant && (
-                    <div className="border-t bg-card px-5 py-3">
-                      <Button variant="outline" className="w-full" onClick={() => openTenant(details.tenant!.id)}>
-                        Open full profile
+                  <div className="flex gap-2 border-t bg-card px-5 py-3">
+                    <Button variant="outline" className="flex-1" onClick={() => openUnitPage(details.unit.id)}>
+                      Unit 360°
+                      <ExternalLink className="size-4" />
+                    </Button>
+                    {details.tenant && (
+                      <Button variant="outline" className="flex-1" onClick={() => openTenant(details.tenant!.id)}>
+                        Tenant profile
                         <ExternalLink className="size-4" />
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </Tabs>
               ) : (
                 <div className="min-h-0 flex-1 overflow-y-auto p-5">
                   <AvailablePanel details={details} />
+                </div>
+              )}
+              {!rented && (
+                <div className="border-t bg-card px-5 py-3">
+                  <Button variant="outline" className="w-full" onClick={() => openUnitPage(details.unit.id)}>
+                    Unit 360°
+                    <ExternalLink className="size-4" />
+                  </Button>
                 </div>
               )}
             </div>
