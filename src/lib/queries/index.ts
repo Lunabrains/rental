@@ -16,3 +16,4 @@ export * from "./profitability";
 export * from "./inspections";
 export * from "./renovations";
 export * from "./forecast";
+export * from "./analytics";

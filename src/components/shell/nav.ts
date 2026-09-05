@@ -90,7 +90,12 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: "Analytics",
-    items: [{ href: "/analytics/performance", label: "Performance", icon: TrendingUp, match: startsWith("/analytics/performance") }],
+    items: [
+      { href: "/analytics", label: "Portfolio", icon: BarChart3, match: (p) => p === "/analytics" },
+      { href: "/analytics/performance", label: "Performance", icon: TrendingUp, match: startsWith("/analytics/performance") },
+      { href: "/analytics/expenses", label: "Expenses", icon: Wallet, match: startsWith("/analytics/expenses") },
+      { href: "/analytics/maintenance", label: "Maintenance", icon: Wrench, match: startsWith("/analytics/maintenance") },
+    ],
   },
   {
     label: "Library",

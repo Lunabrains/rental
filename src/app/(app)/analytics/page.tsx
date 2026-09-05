@@ -1,14 +1,14 @@
 import { Suspense } from "react";
 
 import { PageSkeleton } from "@/components/common/states";
-import { ReportsPage } from "@/components/reports/reports-page";
+import { PortfolioAnalyticsPage } from "@/components/analytics/portfolio-page";
 
-export const metadata = { title: "Reports" };
+export const metadata = { title: "Portfolio analytics" };
 
 export default function Page() {
   return (
     <Suspense fallback={<PageSkeleton />}>
-      <ReportsPage />
+      <PortfolioAnalyticsPage />
     </Suspense>
   );
 }
