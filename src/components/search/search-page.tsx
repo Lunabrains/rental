@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useMemo } from "react";
-import { Building2, FileText, Search, Users } from "lucide-react";
+import { Building2, ClipboardList, FileText, FolderOpen, Search, Truck, Users, Wrench } from "lucide-react";
 
 import { useActions } from "@/components/actions/action-provider";
 import { NeutralPill, UnitStatusBadge } from "@/components/common/badges";
@@ -17,13 +17,13 @@ import { searchAll } from "@/lib/queries";
 export function SearchPage() {
   const store = useStore();
   const params = useSearchParams();
-  const { openUnit } = useActions();
+  const { openUnit, openSupplier, openWorkOrder, openAsset, reviewDocument } = useActions();
   const q = params.get("q") ?? "";
   const results = useMemo(() => searchAll(store, q, 20), [store, q]);
 
   return (
     <div className="space-y-6">
-      <PageHeader title={q ? `Results for “${q}”` : "Search"} description={q ? `${results.total} match${results.total === 1 ? "" : "es"} across tenants, units, buildings and contracts` : "Use the search box above to find a tenant, phone number, unit or building."} />
+      <PageHeader title={q ? `Results for “${q}”` : "Search"} description={q ? `${results.total} match${results.total === 1 ? "" : "es"} across tenants, units, buildings, contracts, suppliers, work orders, assets and documents` : "Use the search box above to find a tenant, phone number, unit or building."} />
 
       {!q ? null : results.total === 0 ? (
         <EmptyState icon={Search} title="Nothing found" description="Try a name, part of a phone number, a unit number or a building." />
@@ -110,6 +110,74 @@ export function SearchPage() {
                         <span className="block truncate text-xs text-muted-foreground">
                           {tenant?.fullName ?? "—"} · {unit?.unitNumber ?? "—"}
                         </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+          {results.suppliers.length > 0 && (
+            <SectionCard title="Suppliers" description={`${results.suppliers.length}`} flush>
+              <ul className="divide-y">
+                {results.suppliers.map((s) => (
+                  <li key={s.id}>
+                    <button type="button" onClick={() => openSupplier(s.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/60">
+                      <span className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground"><Truck className="size-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{s.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{s.category.replace(/_/g, " ")} · {s.phone}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+          {results.workOrders.length > 0 && (
+            <SectionCard title="Work orders" description={`${results.workOrders.length}`} flush>
+              <ul className="divide-y">
+                {results.workOrders.map(({ workOrder, property, unit }) => (
+                  <li key={workOrder.id}>
+                    <button type="button" onClick={() => openWorkOrder(workOrder.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/60">
+                      <span className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground"><Wrench className="size-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{workOrder.number} · {workOrder.title}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{property?.name ?? ""}{unit ? ` ${unit.unitNumber}` : ""} · {workOrder.status.replace(/_/g, " ")}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+          {results.assets.length > 0 && (
+            <SectionCard title="Assets" description={`${results.assets.length}`} flush>
+              <ul className="divide-y">
+                {results.assets.map(({ asset, property }) => (
+                  <li key={asset.id}>
+                    <button type="button" onClick={() => openAsset(asset.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/60">
+                      <span className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground"><ClipboardList className="size-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{asset.name}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{property?.name ?? ""} · {asset.status.replace(/_/g, " ")} · {asset.qrCode}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </SectionCard>
+          )}
+          {results.documents.length > 0 && (
+            <SectionCard title="Documents" description={`${results.documents.length}`} flush>
+              <ul className="divide-y">
+                {results.documents.map(({ document, owner }) => (
+                  <li key={document.id}>
+                    <button type="button" onClick={() => reviewDocument(document.id)} className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-accent/60">
+                      <span className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground"><FolderOpen className="size-4" /></span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{document.title}</span>
+                        <span className="block truncate text-xs text-muted-foreground">{document.category.replace(/_/g, " ")}{owner ? ` · ${owner}` : ""} · {document.fileName}</span>
                       </span>
                     </button>
                   </li>

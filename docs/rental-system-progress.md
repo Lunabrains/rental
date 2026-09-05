@@ -21,7 +21,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 15 — AI document intelligence
 - [x] Phase 16 — AI assistant 2.0
 - [x] Phase 17 — analytics & reporting
-- [ ] Cross-cutting — dashboard redesign, search & command palette, document center, timeline, integrity rules, audit & safety, seed data
+- [x] Cross-cutting — dashboard redesign, search & command palette, document center, timeline, integrity rules, audit & safety, seed data
 
 ## Phase 0 — repository audit
 - Files: `docs/implementation-notes.md`
@@ -152,3 +152,9 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Reports (`/reports`): a catalogue with per-report building, month, year or horizon filters, totals row, CSV and Excel export, print-to-PDF, and a one-click workbook with every report as a sheet.
 - Every estimate (vacancy loss) is labelled; every chart uses one axis except the maintenance jobs/cost pairing, which shares the month axis. Nav: Analytics › Portfolio, Performance, Expenses, Maintenance; Library › Reports.
 - Tests: `tests/analytics.test.ts` (trend consistency, expiration counts, ledger totals and shares, work-order counts and resolution, report widths and totals, filters).
+
+## Cross-cutting
+- Dashboard (§10): six-KPI row (occupancy, expected rent, collected with rate, outstanding, monthly expenses, NOI — each against last month), a five-tile attention strip (overdue tenants, expiring contracts, urgent maintenance, services due, vacant units, each showing the most pressing item and linking to its list), an Insights card with three to five computed, linked insights (`src/lib/derived/insights.ts`: maintenance spend vs six-month average per building, repeat work orders on a unit, contracts expiring in 30 days, tenants owing more than 60 days, longest vacancy, collection drop, worst supplier repeat rate, projects over budget, overdue services), the critical-alert list, next 30 days, a twelve-month financial trend (rent due, collected, operating expenses, NOI) and a building comparison (occupancy, collection, NOI, NOI per unit, outstanding, health). The old intelligence, revenue and ranking cards were replaced.
+- Search & commands (§11): `searchAll` now covers suppliers, work orders (number or title), assets (name, QR, serial, type) and documents (title, file, category) with per-group limits; the search page shows the new groups; a command palette (`src/components/shell/command-palette.tsx`, ⌘K / Ctrl+K or focusing the search box) offers actions (record payment, add expense, create work order, add document, record reading, schedule inspection, register asset, run report), navigation, and live results that open the record.
+- Document centre (§12) delivered in Phase 15; timeline (§13) present on buildings, units, tenants, assets, suppliers, work orders (status history) and renovations; integrity rules (§14) and audit / undo (§15) applied in every command; seed data (§18) covers every feature.
+- Tests: `tests/search-insights.test.ts`.

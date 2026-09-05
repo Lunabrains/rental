@@ -1,7 +1,7 @@
 import { indexStore } from "@/lib/data/store";
 import { isOccupying } from "@/lib/derived/recompute";
 import { addDaysISO, addPeriods, currentPeriod, daysSince, daysUntil, today } from "@/lib/date";
-import type { Alert, AlertCategory, AlertSeverity, Contract, ID, ISODate, Property, Store, Tenant, Unit } from "@/types";
+import type { Alert, AlertCategory, AlertSeverity, Contract, ID, ISODate, Property, Store, Tenant, Unit, Supplier, WorkOrder, Asset, StoredDocument } from "@/types";
 
 import { contractRow, paymentRow, type ContractRow, type PaymentRow } from "./entities";
 
@@ -203,6 +203,10 @@ export interface SearchResults {
   units: { unit: Unit; property: Property; tenant: Tenant | null }[];
   properties: Property[];
   contracts: { contract: Contract; tenant: Tenant | null; unit: Unit | null }[];
+  suppliers: Supplier[];
+  workOrders: { workOrder: WorkOrder; property: Property | null; unit: Unit | null }[];
+  assets: { asset: Asset; property: Property | null }[];
+  documents: { document: StoredDocument; owner: string | null }[];
   total: number;
 }
 
@@ -212,7 +216,7 @@ function norm(s: string): string {
 
 export function searchAll(store: Store, query: string, limit = 8): SearchResults {
   const q = norm(query);
-  const empty: SearchResults = { query, tenants: [], units: [], properties: [], contracts: [], total: 0 };
+  const empty: SearchResults = { query, tenants: [], units: [], properties: [], contracts: [], suppliers: [], workOrders: [], assets: [], documents: [], total: 0 };
   if (q.length < 1) return empty;
   const idx = indexStore(store);
   const digits = q.replace(/\D/g, "");
@@ -252,7 +256,26 @@ export function searchAll(store: Store, query: string, limit = 8): SearchResults
     .slice(0, limit)
     .map((contract) => ({ contract, tenant: idx.tenantById.get(contract.tenantId) ?? null, unit: idx.unitById.get(contract.unitId) ?? null }));
 
-  return { query, tenants, units, properties, contracts, total: tenants.length + units.length + properties.length + contracts.length };
+  const suppliers = store.suppliers.filter((s) => norm(s.name).includes(q) || norm(s.company ?? "").includes(q) || s.services.some((x) => norm(x).includes(q)) || (digits.length >= 4 && s.phone.replace(/\D/g, "").includes(digits))).slice(0, limit);
+
+  const workOrders = store.workOrders
+    .filter((w) => norm(w.number).includes(q) || norm(w.title).includes(q))
+    .sort((a, b) => (a.reportedAt < b.reportedAt ? 1 : -1))
+    .slice(0, limit)
+    .map((workOrder) => ({ workOrder, property: idx.propertyById.get(workOrder.propertyId) ?? null, unit: workOrder.unitId ? idx.unitById.get(workOrder.unitId) ?? null : null }));
+
+  const assets = store.assets
+    .filter((a) => norm(a.name).includes(q) || norm(a.qrCode).includes(q) || norm(a.serialNumber ?? "").includes(q) || norm(a.assetType.replace(/_/g, " ")).includes(q))
+    .slice(0, limit)
+    .map((asset) => ({ asset, property: idx.propertyById.get(asset.propertyId) ?? null }));
+
+  const documents = store.documents
+    .filter((d) => !d.deleted && (norm(d.title).includes(q) || norm(d.fileName).includes(q) || norm(d.category.replace(/_/g, " ")).includes(q)))
+    .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1))
+    .slice(0, limit)
+    .map((document) => ({ document, owner: document.tenantId ? idx.tenantById.get(document.tenantId)?.fullName ?? null : document.supplierId ? idx.supplierById.get(document.supplierId)?.name ?? null : document.propertyId ? idx.propertyById.get(document.propertyId)?.name ?? null : null }));
+
+  return { query, tenants, units, properties, contracts, suppliers, workOrders, assets, documents, total: tenants.length + units.length + properties.length + contracts.length + suppliers.length + workOrders.length + assets.length + documents.length };
 }
 
 /* ---------------------------- Since last login ---------------------------- */

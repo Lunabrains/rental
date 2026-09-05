@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Search } from "lucide-react";
 
+import { CommandPalette } from "@/components/shell/command-palette";
+
 import { BellButton } from "@/components/shell/bell";
 import { MobileNav } from "@/components/shell/mobile-nav";
 import type { Alert } from "@/types";
@@ -20,6 +22,7 @@ interface TopbarProps {
 export function Topbar({ companyName, ownerName, criticalUnread, bellAlerts, onOpenAlert, onMarkAllRead }: TopbarProps) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -37,6 +40,7 @@ export function Topbar({ companyName, ownerName, criticalUnread, bellAlerts, onO
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setPaletteOpen(true)}
           placeholder="Search tenants, phones, units, buildings…"
           aria-label="Search"
           className="h-9 w-full rounded-md border border-input bg-card pl-8 pr-14 text-sm shadow-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/20"
@@ -44,6 +48,7 @@ export function Topbar({ companyName, ownerName, criticalUnread, bellAlerts, onO
         <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground sm:inline-block">⌘K</kbd>
       </form>
 
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <div className="ml-auto flex items-center gap-1.5">
         <BellButton count={criticalUnread} alerts={bellAlerts} onOpenAlert={onOpenAlert} onMarkAllRead={onMarkAllRead} />
         <span className="ml-1 flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground" aria-label={ownerName}>
