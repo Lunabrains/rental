@@ -27,6 +27,11 @@ export interface ExpensePrefill {
   amount?: number;
   description?: string;
   classification?: ExpenseClassification;
+  invoiceNumber?: string;
+  expenseDate?: string;
+  dueDate?: string;
+  /** Invoice / receipt document this expense is booked from. */
+  documentId?: string | null;
 }
 
 /** Add or edit an expense. Building, category, amount, date and description are required. */
@@ -41,15 +46,15 @@ export function ExpenseDialog({ expenseId, prefill, onClose }: { expenseId?: str
   const [assetId, setAssetId] = useState<string | null>(base?.assetId ?? prefill?.assetId ?? null);
   const [category, setCategory] = useState<ExpenseCategory>(base?.category ?? prefill?.category ?? "maintenance");
   const [amount, setAmount] = useState(base?.amount ?? prefill?.amount ?? 0);
-  const [expenseDate, setExpenseDate] = useState(base?.expenseDate ?? today());
-  const [dueDate, setDueDate] = useState(base?.dueDate ?? addDaysISO(today(), 30));
+  const [expenseDate, setExpenseDate] = useState(base?.expenseDate ?? prefill?.expenseDate ?? today());
+  const [dueDate, setDueDate] = useState(base?.dueDate ?? prefill?.dueDate ?? addDaysISO(today(), 30));
   const [status, setStatus] = useState<ExpensePaymentStatus>(base?.paymentStatus ?? "unpaid");
   const [paidDate, setPaidDate] = useState(base?.paidDate ?? today());
   const [recurring, setRecurring] = useState(base?.recurring ?? false);
   const [recurrence, setRecurrence] = useState<Recurrence>(base?.recurrence ?? "monthly");
   const [description, setDescription] = useState(base?.description ?? prefill?.description ?? "");
   const [classification, setClassification] = useState<ExpenseClassification>(base?.classification ?? prefill?.classification ?? (prefill?.renovationId ? "capex" : "operating"));
-  const [invoiceNumber, setInvoiceNumber] = useState(base?.invoiceNumber ?? "");
+  const [invoiceNumber, setInvoiceNumber] = useState(base?.invoiceNumber ?? prefill?.invoiceNumber ?? "");
   const [notes, setNotes] = useState(base?.notes ?? "");
 
   const valid = propertyId !== null && amount >= 0 && description.trim().length > 0 && expenseDate.length === 10 && (status !== "paid" || paidDate >= expenseDate) && (!dueDate || dueDate >= expenseDate);
@@ -75,6 +80,7 @@ export function ExpenseDialog({ expenseId, prefill, onClose }: { expenseId?: str
       notes: notes || null,
       workOrderId: base?.workOrderId ?? prefill?.workOrderId ?? null,
       renovationId: base?.renovationId ?? prefill?.renovationId ?? null,
+      documentId: base?.documentId ?? prefill?.documentId ?? null,
     };
     try {
       const { result, undo } = expenseId ? run(updateExpense(expenseId, input)) : run(addExpense(input));

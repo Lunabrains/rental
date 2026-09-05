@@ -18,7 +18,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 12 — smart alerts engine
 - [x] Phase 13 — cash flow & forecasting
 - [x] Phase 14 — daily owner briefing
-- [ ] Phase 15 — AI document intelligence
+- [x] Phase 15 — AI document intelligence
 - [ ] Phase 16 — AI assistant 2.0
 - [ ] Phase 17 — analytics & reporting
 - [ ] Cross-cutting — dashboard redesign, search & command palette, document center, timeline, integrity rules, audit & safety, seed data
@@ -132,3 +132,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - `src/lib/derived/briefing.ts`: `getDailyBriefing` assembles five sections from the live queries — Decide today (quotes awaiting approval, renewal decisions, deposits to settle, projects over budget / behind schedule), Money (overdue rent with days late, rent due today, supplier invoices due this week), Today & this week (move-ins / move-outs with step progress, inspections, services due or overdue, contract ends, instalments due), Operations (emergencies, work orders open too long, assets out of service, lost keys, long vacancies) and Good news (money received, work orders completed, renewals agreed, tenancies starting, services done). Each item carries `AlertAction`s so the same handlers as alerts run them. Headline, plain-language narrative (portfolio intelligence + today's counts + collection and 30-day net), and the numbers strip. `briefingAsText` renders it for copy / print.
 - UI: `/briefing` (`src/components/briefing/briefing-page.tsx`) with Copy as text and Print; the dashboard intelligence card links to it. Nav: Daily briefing (top group).
 - Tests (`tests/briefing.test.ts`): the seed produces the scripted items in the right sections, every action targets an existing record, the text export contains every non-empty section.
+
+## Phase 15 — AI document intelligence
+- `src/lib/ai/documents.ts`: rule-based extraction that works offline on the file name, title and any plain text (type from keywords, dates, amounts, invoice references, tenant / building / unit / supplier / asset matched against the store, lease terms from labelled text, expiry for policies, certificates, warranties and IDs) with honest per-field confidence; `extractDocument` tries the model route when the server has credentials and the file is text, image or PDF, then validates every id and field coming back (`sanitizeExtraction`). Without a key the rules stand and the screen says so.
+- `src/app/api/ai/extract/route.ts`: forced-tool extraction call (text, image or PDF as base64) that returns structured suggestions only; nothing is written server-side and the original upload is never altered.
+- Review UX (`document-review-dialog.tsx`): preview beside suggested category, links, dates and the fields the document states (High / Medium / Guess badges, evidence, comparison against the linked contract). Applying files the document (`updateDocument`, audited, undoable) and records the extraction and review (`markDocumentReviewed`). Financial and contract records are never created silently: invoices open the expense form prefilled (linked to the document), leases open the contract-terms dialog, warranties can update the asset's expiry with a switch.
+- Document centre (§12): filters by category, building, unit, tenant, supplier and date, a "Needs review" queue, KPIs (needs review, expiring, leases, invoices), drag-and-drop upload that opens the review screen, and a Review button on every row. Expense prefill accepts `documentId`, invoice number and dates.
+- Tests: `tests/documents.test.ts` (parsers, extraction on the seed, model sanitising, filing and review, centre filters).

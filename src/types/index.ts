@@ -773,6 +773,17 @@ export interface StoredDocument {
   dataUrl: string | null;
   /** Soft delete — the record stays for the audit trail. */
   deleted: boolean;
+  /** What the app read from the file (rules or model) — kept apart from the manual fields. */
+  extraction?: DocumentExtractionRecord | null;
+  /** Set when the owner confirmed the filing on the review screen. */
+  reviewedAt?: ISODate | null;
+}
+
+export interface DocumentExtractionRecord {
+  source: "rules" | "model";
+  at: ISODate;
+  docType: DocumentCategory;
+  fields: { key: string; value: string; confidence: number }[];
 }
 
 /* -------------------------------------------------------------------------- */

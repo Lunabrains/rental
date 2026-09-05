@@ -33,6 +33,7 @@ export interface ExpenseInput {
   renovationId?: ID | null;
   assetId?: ID | null;
   notes?: string | null;
+  documentId?: ID | null;
 }
 
 function validate(input: Partial<ExpenseInput>): void {
@@ -63,7 +64,7 @@ export function addExpense(input: ExpenseInput): Command<Expense> {
       recurring: input.recurring ?? false,
       recurrence: input.recurring ? input.recurrence ?? "monthly" : null,
       description: input.description.trim(),
-      documentId: null,
+      documentId: input.documentId ?? null,
       classification: input.classification ?? (input.category === "renovation" || input.renovationId ? "capex" : "operating"),
       workOrderId: input.workOrderId ?? null,
       renovationId: input.renovationId ?? null,

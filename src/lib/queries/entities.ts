@@ -14,6 +14,8 @@ import type {
   StoredDocument,
   Tenant,
   Unit,
+  Asset,
+  Supplier,
 } from "@/types";
 
 /* ------------------------------ Building grid ----------------------------- */
@@ -334,13 +336,51 @@ export function getPayments(store: Store): PaymentRow[] {
     .sort((a, b) => (a.payment.dueDate < b.payment.dueDate ? 1 : -1));
 }
 
-export function getDocuments(store: Store): (StoredDocument & { tenant: Tenant | null; property: Property | null })[] {
+export interface DocumentRow extends StoredDocument {
+  tenant: Tenant | null;
+  property: Property | null;
+  unit: Unit | null;
+  supplier: Supplier | null;
+  asset: Asset | null;
+  /** Uploaded but never filed: no category and nothing it belongs to. */
+  needsReview: boolean;
+}
+
+export interface DocumentFilter {
+  category?: StoredDocument["category"];
+  kind?: StoredDocument["kind"];
+  propertyId?: ID;
+  unitId?: ID;
+  tenantId?: ID;
+  contractId?: ID;
+  supplierId?: ID;
+  assetId?: ID;
+  workOrderId?: ID;
+  from?: ISODate;
+  to?: ISODate;
+  needsReview?: boolean;
+  includeDeleted?: boolean;
+}
+
+export function documentNeedsReview(d: StoredDocument): boolean {
+  if (d.generated || d.deleted || d.reviewedAt) return false;
+  const unlinked = !d.tenantId && !d.propertyId && !d.supplierId && !d.assetId && !d.workOrderId && !d.expenseId && !d.contractId && !d.inspectionId && !d.renovationId;
+  return d.category === "other" || unlinked;
+}
+
+/** The document centre (plan §12): every file with what it belongs to, filterable by entity, category and date. */
+export function getDocuments(store: Store, filter: DocumentFilter = {}): DocumentRow[] {
   const idx = indexStore(store);
   return store.documents
+    .filter((d) => (filter.includeDeleted || !d.deleted) && (!filter.category || d.category === filter.category) && (!filter.kind || d.kind === filter.kind) && (!filter.propertyId || d.propertyId === filter.propertyId) && (!filter.unitId || d.unitId === filter.unitId) && (!filter.tenantId || d.tenantId === filter.tenantId) && (!filter.contractId || d.contractId === filter.contractId) && (!filter.supplierId || d.supplierId === filter.supplierId) && (!filter.assetId || d.assetId === filter.assetId) && (!filter.workOrderId || d.workOrderId === filter.workOrderId) && (!filter.from || d.uploadedAt >= filter.from) && (!filter.to || d.uploadedAt <= filter.to) && (filter.needsReview === undefined || documentNeedsReview(d) === filter.needsReview))
     .map((d) => ({
       ...d,
       tenant: d.tenantId ? idx.tenantById.get(d.tenantId) ?? null : null,
       property: d.propertyId ? idx.propertyById.get(d.propertyId) ?? null : null,
+      unit: d.unitId ? idx.unitById.get(d.unitId) ?? null : null,
+      supplier: d.supplierId ? idx.supplierById.get(d.supplierId) ?? null : null,
+      asset: d.assetId ? idx.assetById.get(d.assetId) ?? null : null,
+      needsReview: documentNeedsReview(d),
     }))
     .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1));
 }

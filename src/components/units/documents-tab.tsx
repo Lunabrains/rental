@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, ExternalLink, Eye, FileText, IdCard, Receipt } from "lucide-react";
+import { Download, ExternalLink, Eye, FileText, IdCard, Receipt, Sparkles } from "lucide-react";
 
 import { AttachmentUploader } from "@/components/common/attachment-uploader";
 import { EmptyState } from "@/components/common/states";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/data/store-context";
 import { daysUntil } from "@/lib/date";
 import { formatDate } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import type { UnitDetails } from "@/lib/queries";
 import type { DocumentKind, StoredDocument } from "@/types";
 
@@ -28,7 +29,7 @@ const KIND_LABEL: Record<DocumentKind, string> = {
   other: "Document",
 };
 
-export function DocumentRow({ doc, onPreview }: { doc: StoredDocument; onPreview: (doc: StoredDocument) => void }) {
+export function DocumentRow({ doc, onPreview, onReview, badge }: { doc: StoredDocument; onPreview: (doc: StoredDocument) => void; onReview?: (documentId: string) => void; badge?: string }) {
   const store = useStore();
   const Icon = ICON[doc.kind];
   const expiring = doc.expiryDate !== null && daysUntil(doc.expiryDate) <= 60;
@@ -41,7 +42,8 @@ export function DocumentRow({ doc, onPreview }: { doc: StoredDocument; onPreview
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{doc.title}</span>
-          <span className="rounded bg-muted px-1.5 py-px text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{KIND_LABEL[doc.kind]}</span>
+          <span className={cn("rounded px-1.5 py-px text-[10px] font-medium uppercase tracking-wide", badge === "Review" ? "bg-warning-muted text-warning-foreground" : "bg-muted text-muted-foreground")}>{badge ?? KIND_LABEL[doc.kind]}</span>
+          {doc.reviewedAt && <span className="text-[10px] text-success" title={`Reviewed ${doc.reviewedAt}`}>✓</span>}
         </span>
         <span className="block truncate text-xs text-muted-foreground">
           {doc.fileName} · {doc.sizeKb} KB
@@ -50,6 +52,11 @@ export function DocumentRow({ doc, onPreview }: { doc: StoredDocument; onPreview
         </span>
       </span>
       <span className="flex shrink-0 items-center gap-0.5">
+        {onReview && !doc.generated && (
+          <Button size="sm" variant={badge === "Review" ? "default" : "ghost"} className="h-7 px-2 text-xs" onClick={() => onReview(doc.id)}>
+            <Sparkles className="size-3.5" /> Review
+          </Button>
+        )}
         <Button size="icon" variant="ghost" className="size-8" aria-label="Preview" onClick={() => onPreview(doc)}>
           <Eye className="size-4" />
         </Button>

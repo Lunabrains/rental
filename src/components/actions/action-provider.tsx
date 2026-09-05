@@ -16,6 +16,7 @@ import { CompleteInspectionDialog, ScheduleInspectionDialog, type InspectionPref
 import { IssueKeyDialog, KeyDialog } from "@/components/operations/key-dialogs";
 import { AssignParkingDialog, ParkingSpaceDialog } from "@/components/operations/parking-dialogs";
 import { CompleteRenovationDialog, RenovationDialog, type RenovationPrefill } from "@/components/operations/renovation-dialogs";
+import { DocumentReviewDialog } from "@/components/documents/document-review-dialog";
 import { WorkOrderDialog, WorkOrderStatusDialog, type WorkOrderPrefill } from "@/components/maintenance/work-order-dialogs";
 import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
@@ -53,6 +54,7 @@ type Flow =
   | { kind: "assign_parking"; spaceId: ID }
   | { kind: "renovation"; renovationId?: ID; prefill?: RenovationPrefill }
   | { kind: "renovation_complete"; renovationId: ID }
+  | { kind: "document_review"; documentId: ID }
   | null;
 
 export interface ActionsContextValue {
@@ -99,6 +101,7 @@ export interface ActionsContextValue {
   createRenovation: (prefill?: RenovationPrefill) => void;
   editRenovation: (renovationId: ID) => void;
   completeRenovation: (renovationId: ID) => void;
+  reviewDocument: (documentId: ID) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -183,6 +186,7 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const createRenovation = useCallback((prefill?: RenovationPrefill) => setFlow({ kind: "renovation", prefill }), []);
   const editRenovation = useCallback((renovationId: ID) => setFlow({ kind: "renovation", renovationId }), []);
   const completeRenovation = useCallback((renovationId: ID) => setFlow({ kind: "renovation_complete", renovationId }), []);
+  const reviewDocument = useCallback((documentId: ID) => setFlow({ kind: "document_review", documentId }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -290,8 +294,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -313,6 +317,7 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "issue_key" && <IssueKeyDialog key={flow.keyId} keyId={flow.keyId} defaultTenantId={flow.tenantId} onClose={closeFlow} />}
       {flow?.kind === "parking" && <ParkingSpaceDialog key={flow.spaceId ?? "new"} spaceId={flow.spaceId} defaultPropertyId={flow.propertyId} onClose={closeFlow} />}
       {flow?.kind === "renovation" && <RenovationDialog key={flow.renovationId ?? "new"} renovationId={flow.renovationId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/renovations/${id}`)} />}
+      {flow?.kind === "document_review" && <DocumentReviewDialog key={flow.documentId} documentId={flow.documentId} onClose={closeFlow} />}
       {flow?.kind === "renovation_complete" && <CompleteRenovationDialog key={flow.renovationId} renovationId={flow.renovationId} onClose={closeFlow} />}
       {flow?.kind === "assign_parking" && <AssignParkingDialog key={flow.spaceId} spaceId={flow.spaceId} onClose={closeFlow} />}
       {flow?.kind === "log_service" && <LogServiceDialog key={flow.planId} planId={flow.planId} onClose={closeFlow} />}

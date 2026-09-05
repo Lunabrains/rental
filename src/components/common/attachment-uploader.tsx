@@ -1,5 +1,6 @@
 "use client";
 
+import { useActions } from "@/components/actions/action-provider";
 import { useRef, useState } from "react";
 import { Paperclip, Upload } from "lucide-react";
 import { toast } from "sonner";
@@ -18,6 +19,8 @@ interface AttachmentUploaderProps {
   photos?: boolean;
   label?: string;
   onAdded?: (doc: StoredDocument) => void;
+  /** Open the review screen right after the upload (plan §Phase 15). */
+  review?: boolean;
   className?: string;
   compact?: boolean;
 }
@@ -27,8 +30,9 @@ interface AttachmentUploaderProps {
  * an object URL is kept for preview and the record joins the document centre
  * with its links, category and audit trail.
  */
-export function AttachmentUploader({ links, category = "other", photos, label, onAdded, className, compact }: AttachmentUploaderProps) {
+export function AttachmentUploader({ links, category = "other", photos, label, onAdded, review, className, compact }: AttachmentUploaderProps) {
   const { run } = useStoreContext();
+  const { reviewDocument } = useActions();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
 
@@ -49,6 +53,7 @@ export function AttachmentUploader({ links, category = "other", photos, label, o
         }),
       );
       onAdded?.(result);
+      if (review && list.length === 1 && !photos) reviewDocument(result.id);
       toast.success(`${photos ? "Photo" : "Document"} added — ${file.name}`, { action: undo ? { label: "Undo", onClick: undo } : undefined });
     }
     if (inputRef.current) inputRef.current.value = "";

@@ -5,7 +5,7 @@ import { recompute } from "@/lib/derived/recompute";
 import { mimeFor } from "@/lib/import/apply";
 import type { AlertEntityType, DocumentCategory, DocumentKind, ID, ISODate, Reminder, Store, StoredDocument } from "@/types";
 
-import { appendActivity, appendAudit, finish, removeAudit, replaceById, type Command } from "./core";
+import { appendActivity, appendAudit, finish, removeAudit, replaceById, type Command, auditChanges } from "./core";
 
 /**
  * Cross-cutting writes shared by every module: documents, reminders and
@@ -91,6 +91,45 @@ export function addDocument(input: AddDocumentInput): Command<StoredDocument> {
     });
     const undo = (s: Store): Store => recompute({ ...s, documents: s.documents.filter((d) => d.id !== doc.id), activity: s.activity.filter((a) => a.id !== entry.id) });
     return finish(logged, doc, undo);
+  };
+}
+
+export type DocumentPatch = Partial<Pick<StoredDocument, "title" | "category" | "kind" | "tenantId" | "contractId" | "unitId" | "propertyId" | "supplierId" | "assetId" | "workOrderId" | "expenseId" | "issuedDate" | "expiryDate">>;
+
+/** File a document: category, links and dates. The upload itself is untouched. */
+export function updateDocument(documentId: ID, patch: DocumentPatch): Command<StoredDocument> {
+  return (store) => {
+    const idx = indexStore(store);
+    const prev = idx.documentById.get(documentId);
+    if (!prev) throw new Error("Document not found");
+    const check = (key: keyof DocumentPatch, map: Map<ID, unknown>, label: string) => {
+      const id = patch[key];
+      if (id && !map.has(id as ID)) throw new Error(`${label} not found`);
+    };
+    check("tenantId", idx.tenantById, "Tenant");
+    check("contractId", idx.contractById, "Contract");
+    check("unitId", idx.unitById, "Unit");
+    check("propertyId", idx.propertyById, "Building");
+    check("supplierId", idx.supplierById, "Supplier");
+    check("assetId", idx.assetById, "Asset");
+    check("workOrderId", idx.workOrderById, "Work order");
+    check("expenseId", idx.expenseById, "Expense");
+    const kind = patch.kind ?? (patch.category ? KIND_FOR_CATEGORY[patch.category] ?? (patch.category === prev.category ? prev.kind : "other") : prev.kind);
+    const next: StoredDocument = { ...prev, ...patch, kind, title: patch.title === undefined ? prev.title : patch.title.trim() || prev.title };
+    if (next.issuedDate && next.expiryDate && next.expiryDate < next.issuedDate) throw new Error("Expiry is before the issue date");
+    const audited = auditChanges({ ...store, documents: replaceById(store.documents, next) }, "document", next.id, next.title, prev, next, ["dataUrl", "extraction", "reviewedAt"]);
+    const { store: logged, entry } = appendActivity(audited.store, { type: "document_added", message: `Document filed — ${next.title} (${next.category.replace(/_/g, " ")})`, entityType: next.tenantId ? "tenant" : next.assetId ? "asset" : next.supplierId ? "supplier" : next.propertyId ? "property" : "portfolio", entityId: next.tenantId ?? next.assetId ?? next.supplierId ?? next.propertyId ?? "portfolio", propertyId: next.propertyId, unitId: next.unitId, tenantId: next.tenantId, contractId: next.contractId, assetId: next.assetId, supplierId: next.supplierId, expenseId: next.expenseId });
+    return finish(logged, next, (s) => recompute(removeAudit({ ...s, documents: replaceById(s.documents, prev), activity: s.activity.filter((a) => a.id !== entry.id) }, audited.entryIds)));
+  };
+}
+
+/** Record what was read and that the owner confirmed it. Not audited — the filing itself is. */
+export function markDocumentReviewed(documentId: ID, extraction: NonNullable<StoredDocument["extraction"]>): Command<StoredDocument> {
+  return (store) => {
+    const prev = indexStore(store).documentById.get(documentId);
+    if (!prev) throw new Error("Document not found");
+    const next: StoredDocument = { ...prev, extraction, reviewedAt: extraction.at };
+    return { store: { ...store, documents: replaceById(store.documents, next) }, result: next, undo: (s) => ({ ...s, documents: replaceById(s.documents, prev) }) };
   };
 }
 
