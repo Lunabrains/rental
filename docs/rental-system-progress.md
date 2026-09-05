@@ -13,7 +13,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 7 — maintenance work orders
 - [x] Phase 8 — preventive maintenance & assets (QR)
 - [x] Phase 9 — suppliers
-- [ ] Phase 10 — inspections, move-in/out, keys, parking
+- [x] Phase 10 — inspections, move-in/out, keys, parking
 - [ ] Phase 11 — renovations / CapEx
 - [ ] Phase 12 — smart alerts engine
 - [ ] Phase 13 — cash flow & forecasting
@@ -97,3 +97,12 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Dialog (`supplier-dialog.tsx`): add/edit with services list, rating and active flag; inactive suppliers are excluded from suggestions on new work orders.
 - Nav: Maintenance › Suppliers. Alert action `view_supplier` wired; work-order and asset pages link to supplier pages.
 - Scoring lives in `supplierRow` (`src/lib/queries/operations.ts`) and is covered by `tests/maintenance.test.ts`.
+
+## Phase 10 — inspections, move-in / move-out, keys, parking
+- Commands (`src/lib/commands/inspections.ts`): checklist templates per type (`CHECKLIST_TEMPLATES`), `scheduleInspection` (resolves tenant / contract / deposit from the unit), `recordInspectionItem` (first record → in progress, fail flags a follow-up), `addInspectionItem` / `removeInspectionItem`, `completeInspection` (derived overall result, override allowed, no future dates), `cancelInspection`, `startMoveOut` / `startMoveIn` (one per contract); keys `addKey`, `updateKey`, `issueKey`, `returnKey`, `markKeyLost`, `returnAllKeys`; parking `addParkingSpace`, `updateParkingSpace`, `assignParking` (resolves the occupant, refuses double assignment), `releaseParking`. Audited and undoable.
+- Work orders can now be raised for one checklist item (`inspectionItemId`), keeping the other follow-ups open.
+- Queries (`src/lib/queries/inspections.ts`): `getInspectionDetails` (reference report — the move-in for a move-out, otherwise the previous completed one — with item-by-item comparison and "deteriorated" flags, keys, meters, parking, deposit, work orders, photos, progress), `getMoves` (move-in / move-out checklists with step status), `getKeyStats`, `getParkingStats`.
+- Alerts: `move_out_unplanned` (leaving, or two weeks from the end without a renewal, and no move-out inspection), `move_in_unplanned` (contract starting within the lead window, no condition report), `key_lost` (with "change the lock" work-order action). Thresholds `moveOutInspectionLeadDays` (30) and `moveInInspectionLeadDays` (14).
+- UI: `/inspections` board (KPIs, move checklists with step progress, filters, table), `/inspections/[id]` (grouped checklist with pass / attention / fail toggles, notes, add / remove items, raise or open the work order per item, comparison with the reference report, move-out steps: keys back, closing readings via the reading dialog, parking, deposit settlement; photos), `/keys` register (issue / return / lost / found), `/parking` register (assign / release). Dialogs in `src/components/operations/*`.
+- Cross-links: unit Inspections tab opens inspection pages and schedules annual / move-out checklists; unit Keys & parking card links to the registers; tenant page offers "Schedule move-out" / opens the existing checklist; building Maintenance tab lists inspections; alert actions `view_inspection`, `schedule_inspection`, `view_keys` wired.
+- Nav: Operations › Inspections, Keys, Parking. Tests: `tests/operations.test.ts`.

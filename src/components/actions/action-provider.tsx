@@ -12,12 +12,16 @@ import { PaymentDetailDialog } from "@/components/payments/payment-detail-dialog
 import { DepositDialog } from "@/components/finance/deposit-dialog";
 import { AssetDialog, LogServiceDialog, PlanDialog } from "@/components/maintenance/asset-dialogs";
 import { SupplierDialog } from "@/components/maintenance/supplier-dialog";
+import { CompleteInspectionDialog, ScheduleInspectionDialog, type InspectionPrefill } from "@/components/operations/inspection-dialogs";
+import { IssueKeyDialog, KeyDialog } from "@/components/operations/key-dialogs";
+import { AssignParkingDialog, ParkingSpaceDialog } from "@/components/operations/parking-dialogs";
 import { WorkOrderDialog, WorkOrderStatusDialog, type WorkOrderPrefill } from "@/components/maintenance/work-order-dialogs";
 import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
 import { RecordPaymentDialog } from "@/components/flows/record-payment-dialog";
 import { RenewContractDialog } from "@/components/flows/renew-contract-dialog";
 import { indexStore } from "@/lib/data/store";
+import { daysSince } from "@/lib/date";
 import { useStoreContext } from "@/lib/data/store-context";
 import type { AlertAction, ID, RenewalDecision, WorkOrderStatus, SupplierCategory } from "@/types";
 
@@ -40,6 +44,12 @@ type Flow =
   | { kind: "plan"; planId?: ID; defaults?: { propertyId?: ID | null; assetId?: ID | null } }
   | { kind: "log_service"; planId: ID }
   | { kind: "supplier"; supplierId?: ID; category?: SupplierCategory }
+  | { kind: "inspection_schedule"; prefill?: InspectionPrefill }
+  | { kind: "inspection_complete"; inspectionId: ID }
+  | { kind: "key"; keyId?: ID; defaults?: { propertyId?: ID | null; unitId?: ID | null } }
+  | { kind: "issue_key"; keyId: ID; tenantId?: ID | null }
+  | { kind: "parking"; spaceId?: ID; propertyId?: ID | null }
+  | { kind: "assign_parking"; spaceId: ID }
   | null;
 
 export interface ActionsContextValue {
@@ -73,6 +83,15 @@ export interface ActionsContextValue {
   openSupplier: (supplierId: ID) => void;
   addSupplier: (category?: SupplierCategory) => void;
   editSupplier: (supplierId: ID) => void;
+  openInspection: (inspectionId: ID) => void;
+  scheduleInspection: (prefill?: InspectionPrefill) => void;
+  completeInspection: (inspectionId: ID) => void;
+  addKey: (defaults?: { propertyId?: ID | null; unitId?: ID | null }) => void;
+  editKey: (keyId: ID) => void;
+  issueKey: (keyId: ID, tenantId?: ID | null) => void;
+  addParking: (propertyId?: ID | null) => void;
+  editParking: (spaceId: ID) => void;
+  assignParking: (spaceId: ID) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -144,6 +163,15 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const openSupplier = useCallback((supplierId: ID) => router.push(`/suppliers/${supplierId}`), [router]);
   const addSupplier = useCallback((category?: SupplierCategory) => setFlow({ kind: "supplier", category }), []);
   const editSupplier = useCallback((supplierId: ID) => setFlow({ kind: "supplier", supplierId }), []);
+  const openInspection = useCallback((inspectionId: ID) => router.push(`/inspections/${inspectionId}`), [router]);
+  const scheduleInspection = useCallback((prefill?: InspectionPrefill) => setFlow({ kind: "inspection_schedule", prefill }), []);
+  const completeInspection = useCallback((inspectionId: ID) => setFlow({ kind: "inspection_complete", inspectionId }), []);
+  const addKey = useCallback((defaults?: { propertyId?: ID | null; unitId?: ID | null }) => setFlow({ kind: "key", defaults }), []);
+  const editKey = useCallback((keyId: ID) => setFlow({ kind: "key", keyId }), []);
+  const issueKey = useCallback((keyId: ID, tenantId?: ID | null) => setFlow({ kind: "issue_key", keyId, tenantId }), []);
+  const addParking = useCallback((propertyId?: ID | null) => setFlow({ kind: "parking", propertyId }), []);
+  const editParking = useCallback((spaceId: ID) => setFlow({ kind: "parking", spaceId }), []);
+  const assignParking = useCallback((spaceId: ID) => setFlow({ kind: "assign_parking", spaceId }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -205,6 +233,18 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return openAsset(action.targetId);
         case "view_supplier":
           return openSupplier(action.targetId);
+        case "view_inspection":
+          return openInspection(action.targetId);
+        case "schedule_inspection": {
+          const c = indexStore(store).contractById.get(action.targetId);
+          if (!c) return scheduleInspection({});
+          const hasMoveIn = store.inspections.some((i) => i.contractId === c.id && i.type === "move_in" && i.status !== "cancelled");
+          return scheduleInspection({ contractId: c.id, type: !hasMoveIn && daysSince(c.startDate) <= store.settings.thresholds.inspectionOverdueDays ? "move_in" : "move_out" });
+        }
+        case "view_keys": {
+          const k = store.keys.find((x) => x.id === action.targetId);
+          return router.push(k ? `/keys?property=${k.propertyId}${k.unitId ? `&unit=${k.unitId}` : ""}` : "/keys");
+        }
         case "view_plan":
           return router.push(`/maintenance/preventive?state=all`);
         case "schedule_service":
@@ -220,6 +260,9 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
             const item = insp.items.find((x) => x.followUpRequired && !x.workOrderId);
             return createWorkOrder({ propertyId: insp.propertyId, unitId: insp.unitId, assetId: insp.assetId, tenantId: insp.tenantId, inspectionId: insp.id, source: "inspection", title: item ? `${item.area} — ${item.item}` : "Inspection follow-up", description: item?.notes ?? undefined, category: "other" });
           }
+          const unit = i.unitById.get(action.targetId);
+          if (unit) return createWorkOrder({ propertyId: unit.propertyId, unitId: unit.id, title: "Change the lock — key lost", category: "other", priority: "high" });
+          if (i.propertyById.get(action.targetId)) return createWorkOrder({ propertyId: action.targetId, title: "Change the lock — key lost", category: "security", priority: "high" });
           return createWorkOrder({});
         }
         case "view_budget": {
@@ -230,12 +273,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, openSupplier, router, store],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, openSupplier, openInspection, scheduleInspection, router, store],
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -251,6 +294,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "asset" && <AssetDialog key={flow.assetId ?? "new"} assetId={flow.assetId} defaultPropertyId={flow.propertyId} onClose={closeFlow} />}
       {flow?.kind === "plan" && <PlanDialog key={flow.planId ?? "new"} planId={flow.planId} defaults={flow.defaults} onClose={closeFlow} />}
       {flow?.kind === "supplier" && <SupplierDialog key={flow.supplierId ?? "new"} supplierId={flow.supplierId} defaultCategory={flow.category} onClose={closeFlow} />}
+      {flow?.kind === "inspection_schedule" && <ScheduleInspectionDialog prefill={flow.prefill} onClose={closeFlow} onScheduled={(id) => router.push(`/inspections/${id}`)} />}
+      {flow?.kind === "inspection_complete" && <CompleteInspectionDialog key={flow.inspectionId} inspectionId={flow.inspectionId} onClose={closeFlow} />}
+      {flow?.kind === "key" && <KeyDialog key={flow.keyId ?? "new"} keyId={flow.keyId} defaults={flow.defaults} onClose={closeFlow} />}
+      {flow?.kind === "issue_key" && <IssueKeyDialog key={flow.keyId} keyId={flow.keyId} defaultTenantId={flow.tenantId} onClose={closeFlow} />}
+      {flow?.kind === "parking" && <ParkingSpaceDialog key={flow.spaceId ?? "new"} spaceId={flow.spaceId} defaultPropertyId={flow.propertyId} onClose={closeFlow} />}
+      {flow?.kind === "assign_parking" && <AssignParkingDialog key={flow.spaceId} spaceId={flow.spaceId} onClose={closeFlow} />}
       {flow?.kind === "log_service" && <LogServiceDialog key={flow.planId} planId={flow.planId} onClose={closeFlow} />}
       {flow?.kind === "work_order_status" && <WorkOrderStatusDialog key={flow.workOrderId} workOrderId={flow.workOrderId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "deposit" && <DepositDialog key={flow.depositId} depositId={flow.depositId} onClose={closeFlow} />}

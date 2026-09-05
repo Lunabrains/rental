@@ -856,6 +856,9 @@ export type AlertType =
   | "deposit_not_received"
   | "inspection_overdue"
   | "inspection_followup_open"
+  | "move_out_unplanned"
+  | "move_in_unplanned"
+  | "key_lost"
   | "renovation_over_budget"
   | "renovation_delayed"
   | "reminder_due";
@@ -877,7 +880,9 @@ export type AlertEntityType =
   | "preventive_plan"
   | "deposit"
   | "meter"
-  | "reminder";
+  | "reminder"
+  | "key"
+  | "parking";
 
 export type AlertActionKind =
   | "record_payment"
@@ -894,6 +899,8 @@ export type AlertActionKind =
   | "view_expense"
   | "view_supplier"
   | "view_inspection"
+  | "schedule_inspection"
+  | "view_keys"
   | "view_renovation"
   | "view_plan"
   | "view_deposit"
@@ -1092,6 +1099,10 @@ export interface AlertThresholds {
   budgetOverPct: number;
   expenseUnusualMultiplier: number;
   inspectionOverdueDays: number;
+  /** Days before a contract ends by which a move-out inspection should be scheduled. */
+  moveOutInspectionLeadDays: number;
+  /** Days before a contract starts by which a move-in inspection should be scheduled. */
+  moveInInspectionLeadDays: number;
   forecastHorizonDays: number;
 }
 

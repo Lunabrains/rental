@@ -53,6 +53,8 @@ export const DEFAULT_THRESHOLDS: AlertThresholds = {
   budgetOverPct: 0.1,
   expenseUnusualMultiplier: 2,
   inspectionOverdueDays: 7,
+  moveOutInspectionLeadDays: 30,
+  moveInInspectionLeadDays: 14,
   forecastHorizonDays: 90,
 };
 

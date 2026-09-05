@@ -896,6 +896,76 @@ export function computeAlerts(store: Store, base: ISODate): Alert[] {
     }
   }
 
+  /* --------------------------- Move-in / move-out ----------------------- */
+
+  for (const c of store.contracts) {
+    const hasInspection = (type: "move_in" | "move_out") => store.inspections.some((i) => i.contractId === c.id && i.type === type && i.status !== "cancelled");
+    const name = tenantName(c.tenantId);
+    const place = unitLabel(c.unitId);
+    const link = { propertyId: c.propertyId, unitId: c.unitId, tenantId: c.tenantId };
+    if (isOccupying(c) && c.renewalDecision !== "renew") {
+      const end = c.moveOutDate ?? c.endDate;
+      const d = daysUntil(end);
+      const leaving = c.status === "notice_given" || c.renewalDecision === "do_not_renew";
+      // Leaving for sure, or two weeks from the end with no renewal agreed — either way the move-out needs planning.
+      if ((leaving || d <= 14) && d >= -t.inspectionOverdueDays && !hasInspection("move_out")) {
+        out.push(
+          candidate({
+            type: "move_out_unplanned",
+            category: "inspection",
+            severity: d <= 7 ? "warning" : "attention",
+            entityType: "contract",
+            entityId: c.id,
+            title: `Move-out checklist not scheduled — ${name}`,
+            message: `${place} · ${d < 0 ? `left ${Math.abs(d)} days ago` : d === 0 ? "leaving today" : `leaving in ${d} days`} · inspection, keys, readings and deposit settlement`,
+            actions: [act("schedule_inspection", "Schedule move-out", c.id), act("view_tenant", "View tenant", c.tenantId)],
+            weight: 900 + Math.max(0, t.moveOutInspectionLeadDays - d) * 20,
+            dueDate: end,
+            ...link,
+          }),
+        );
+      }
+    }
+    if (c.status === "active" && daysUntil(c.startDate) <= t.moveInInspectionLeadDays && daysSince(c.startDate) <= t.inspectionOverdueDays && !hasInspection("move_in")) {
+      const d = daysUntil(c.startDate);
+      out.push(
+        candidate({
+          type: "move_in_unplanned",
+          category: "inspection",
+          severity: "attention",
+          entityType: "contract",
+          entityId: c.id,
+          title: `Move-in checklist not scheduled — ${name}`,
+          message: `${place} · ${d < 0 ? `moved in ${Math.abs(d)} days ago` : d === 0 ? "moving in today" : `moving in ${d} days`} · condition report protects the deposit`,
+          actions: [act("schedule_inspection", "Schedule move-in", c.id), act("view_tenant", "View tenant", c.tenantId)],
+          weight: 700 + Math.max(0, t.moveInInspectionLeadDays - d) * 10,
+          dueDate: c.startDate,
+          ...link,
+        }),
+      );
+    }
+  }
+
+  for (const k of store.keys) {
+    if (k.status !== "lost") continue;
+    out.push(
+      candidate({
+        type: "key_lost",
+        category: "inspection",
+        severity: k.type === "apartment_key" || k.type === "building_key" ? "warning" : "attention",
+        entityType: "key",
+        entityId: k.id,
+        title: `${labelize(k.type)} ${k.identifier} recorded lost — ${where(k.propertyId, k.unitId)}`,
+        message: `${k.assignedTo ? `Last held by ${k.assignedTo} · ` : ""}consider changing the lock and issuing a replacement`,
+        actions: [act("view_keys", "Key register", k.id), ...(k.type === "apartment_key" || k.type === "building_key" ? [act("create_work_order", "Change the lock", k.unitId ?? k.propertyId)] : [])],
+        weight: 500,
+        propertyId: k.propertyId,
+        unitId: k.unitId,
+        tenantId: k.tenantId,
+      }),
+    );
+  }
+
   /* ------------------------------ Renovations --------------------------- */
 
   for (const r of store.renovations) {

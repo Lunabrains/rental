@@ -40,6 +40,8 @@ export interface WorkOrderInput {
   reportedAt?: ISODate;
   notes?: string | null;
   inspectionId?: ID | null;
+  /** Link only this checklist item (otherwise every pending follow-up on the inspection). */
+  inspectionItemId?: ID | null;
   preventivePlanId?: ID | null;
   repeatOfWorkOrderId?: ID | null;
 }
@@ -105,7 +107,7 @@ export function createWorkOrder(input: WorkOrderInput): Command<WorkOrder> {
     if (input.inspectionId) {
       next = {
         ...next,
-        inspections: next.inspections.map((i) => (i.id === input.inspectionId ? { ...i, items: i.items.map((it) => (it.followUpRequired && !it.workOrderId ? { ...it, workOrderId: order.id } : it)) } : i)),
+        inspections: next.inspections.map((i) => (i.id === input.inspectionId ? { ...i, items: i.items.map((it) => ((input.inspectionItemId ? it.id === input.inspectionItemId : it.followUpRequired && !it.workOrderId) ? { ...it, workOrderId: order.id } : it)) } : i)),
       };
     }
     const audited = appendAudit(next, { action: "create", entityType: "work_order", entityId: order.id, entityLabel: `${order.number} · ${order.title}`, newValue: order.status });

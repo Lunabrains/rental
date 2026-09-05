@@ -54,7 +54,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
   const { store } = useStoreContext();
   const router = useRouter();
   const params = useSearchParams();
-  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder } = useActions();
+  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder, openInspection, scheduleInspection } = useActions();
   const t = useMemo(() => getTenant360(store, tenantId), [store, tenantId]);
   const [preview, setPreview] = useState<StoredDocument | null>(null);
 
@@ -208,6 +208,14 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
                   <Button size="sm" variant="outline" onClick={() => renewalDecision(current.contract.id)}>
                     <Check className="size-3.5" /> Renewal decision
                   </Button>
+                  {(() => {
+                    const moveOut = store.inspections.find((i) => i.contractId === current.contract.id && i.type === "move_out" && i.status !== "cancelled");
+                    return moveOut ? (
+                      <Button size="sm" variant="outline" onClick={() => openInspection(moveOut.id)}>Move-out checklist · {labelize(moveOut.status)}</Button>
+                    ) : current.contract.renewalDecision !== "renew" ? (
+                      <Button size="sm" variant="outline" onClick={() => scheduleInspection({ contractId: current.contract.id, type: "move_out" })}>Schedule move-out</Button>
+                    ) : null;
+                  })()}
                   {current.contract.renewalNotes && <span className="self-center text-xs text-muted-foreground">{current.contract.renewalNotes}</span>}
                 </div>
               )}

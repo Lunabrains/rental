@@ -3,7 +3,10 @@ import {
   Bell,
   Building2,
   CalendarClock,
+  Car,
+  ClipboardCheck,
   ClipboardList,
+  KeyRound,
   Truck,
   CreditCard,
   Receipt,
@@ -69,6 +72,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || (p.startsWith("/maintenance/") && !p.startsWith("/maintenance/preventive")) },
       { href: "/maintenance/preventive", label: "Preventive", icon: CalendarClock, match: startsWith("/maintenance/preventive") },
       { href: "/suppliers", label: "Suppliers", icon: Truck, match: startsWith("/suppliers") },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { href: "/inspections", label: "Inspections", icon: ClipboardCheck, match: startsWith("/inspections") },
+      { href: "/keys", label: "Keys", icon: KeyRound, match: startsWith("/keys") },
+      { href: "/parking", label: "Parking", icon: Car, match: startsWith("/parking") },
     ],
   },
   {

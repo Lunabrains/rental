@@ -17,6 +17,7 @@ import { PriorityBadge, StatusBadge } from "@/components/common/status-badge";
 import { Timeline } from "@/components/common/timeline";
 import { DocumentPreview } from "@/components/documents/document-preview";
 import { Button } from "@/components/ui/button";
+import { inspectionColumns } from "@/components/operations/inspections-page";
 import { DocumentRow } from "@/components/units/documents-tab";
 import { useStore } from "@/lib/data/store-context";
 import { formatDate, formatMoney, formatMoneyCompact, formatMonth, formatMonthShort, formatPercent, labelize } from "@/lib/format";
@@ -26,6 +27,7 @@ import {
   getPropertyOverview,
   getPropertyTimeline,
   getAssets,
+  getInspections,
   getPreventivePlans,
   getWorkOrders,
   getMaintenanceSummary,
@@ -384,8 +386,9 @@ const planColumns: Column<PlanRow>[] = [
 
 export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
   const store = useStore();
-  const { openWorkOrder, createWorkOrder, logService, addPlan } = useActions();
+  const { openWorkOrder, createWorkOrder, logService, addPlan, openInspection, scheduleInspection } = useActions();
   const summary = useMemo(() => getMaintenanceSummary(store, propertyId), [store, propertyId]);
+  const inspections = useMemo(() => getInspections(store, { propertyId }), [store, propertyId]);
   const open = useMemo(() => getWorkOrders(store, { propertyId, status: "open" }), [store, propertyId]);
   const history = useMemo(() => getWorkOrders(store, { propertyId, status: "closed_all" }), [store, propertyId]);
   const plans = useMemo(() => getPreventivePlans(store, { propertyId }), [store, propertyId]);
@@ -408,6 +411,12 @@ export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
       <SectionCard title="Preventive maintenance" description={`${plans.filter((p) => p.state === "overdue").length} overdue · ${plans.filter((p) => p.state === "due_soon").length} due soon`} action={<Button size="sm" variant="outline" onClick={() => addPlan({ propertyId })}>New plan</Button>} flush>
         <div className="p-3">
           <DataTable rows={plans} columns={[...planColumns, { key: "act", header: "", sortable: false, noExport: true, cell: (r) => (r.state !== "paused" ? <span className="flex justify-end" onClick={(e) => e.stopPropagation()}><Button size="sm" variant={r.state === "overdue" || r.state === "due_soon" ? "default" : "outline"} className="h-7 px-2 text-xs" onClick={() => logService(r.plan.id)}>Log service</Button></span> : null) }]} rowKey={(r) => r.plan.id} dense emptyTitle="No preventive plans" defaultSort={{ key: "next", dir: "asc" }} rowClassName={(r) => (r.state === "overdue" ? "bg-critical-muted/30" : undefined)} />
+        </div>
+      </SectionCard>
+
+      <SectionCard title="Inspections" description={`${inspections.filter((r) => r.overdue).length} overdue · ${inspections.reduce((n, r) => n + r.followUps, 0)} follow-ups open`} action={<Button size="sm" variant="outline" onClick={() => scheduleInspection({ propertyId, type: "building" })}>Schedule</Button>} flush>
+        <div className="p-3">
+          <DataTable rows={inspections} columns={inspectionColumns.filter((c) => c.key !== "where" || true)} rowKey={(r) => r.inspection.id} onRowClick={(r) => openInspection(r.inspection.id)} dense pageSize={10} emptyTitle="No inspections yet" rowClassName={(r) => (r.overdue ? "bg-critical-muted/30" : undefined)} />
         </div>
       </SectionCard>
 

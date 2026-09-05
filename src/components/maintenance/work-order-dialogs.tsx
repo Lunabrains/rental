@@ -25,6 +25,7 @@ export interface WorkOrderPrefill {
   assetId?: string | null;
   tenantId?: string | null;
   inspectionId?: string | null;
+  inspectionItemId?: string | null;
   preventivePlanId?: string | null;
   title?: string;
   description?: string;
@@ -58,7 +59,7 @@ export function WorkOrderDialog({ workOrderId, prefill, onClose }: { workOrderId
 
   function submit() {
     if (!valid || !propertyId) return;
-    const input: WorkOrderInput = { propertyId, unitId, assetId, tenantId, title, description, category, priority, source, supplierId, estimatedCost: estimated > 0 ? estimated : null, approvalRequired: approval, notes: notes || null, inspectionId: prefill?.inspectionId ?? null, preventivePlanId: prefill?.preventivePlanId ?? null, repeatOfWorkOrderId: prefill?.repeatOfWorkOrderId ?? null };
+    const input: WorkOrderInput = { propertyId, unitId, assetId, tenantId, title, description, category, priority, source, supplierId, estimatedCost: estimated > 0 ? estimated : null, approvalRequired: approval, notes: notes || null, inspectionId: prefill?.inspectionId ?? null, inspectionItemId: prefill?.inspectionItemId ?? null, preventivePlanId: prefill?.preventivePlanId ?? null, repeatOfWorkOrderId: prefill?.repeatOfWorkOrderId ?? null };
     try {
       if (existing) {
         const { result, undo } = run(updateWorkOrder(existing.id, { title, description, category, priority, supplierId, estimatedCost: estimated > 0 ? estimated : null, approvalRequired: approval, notes: notes || null, unitId, assetId }));

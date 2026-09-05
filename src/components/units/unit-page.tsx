@@ -203,7 +203,7 @@ export function UnitPage({ unitId }: { unitId: string }) {
 
       {tab === "profitability" && <ProfitabilityTab unitId={u.unit.id} />}
       {tab === "maintenance" && <MaintenanceTab u={u} />}
-      {tab === "inspections" && <InspectionsTab rows={u.inspections} />}
+      {tab === "inspections" && <InspectionsTab rows={u.inspections} unitId={u.unit.id} propertyId={u.property.id} />}
       {tab === "utilities" && <UtilitiesTab meters={u.meters} />}
       {tab === "documents" && (
         <SectionCard title="Documents">
@@ -312,6 +312,10 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
             <Field label="Parking">{u.parking.length > 0 ? u.parking.map((p) => `${p.space.spaceNumber}${p.space.vehiclePlate ? ` (${p.space.vehiclePlate})` : ""}`).join(", ") : "No space assigned"}</Field>
             <Field label="Lost keys">{u.keys.filter((k) => k.key.status === "lost").length || "—"}</Field>
           </dl>
+          <div className="mt-3 flex gap-2">
+            <Button asChild size="sm" variant="outline"><Link href={`/keys?property=${u.property.id}&unit=${u.unit.id}`}>Keys</Link></Button>
+            <Button asChild size="sm" variant="outline"><Link href={`/parking?property=${u.property.id}&unit=${u.unit.id}`}>Parking</Link></Button>
+          </div>
           {u.keys.some((k) => k.key.status === "lost") && (
             <p className="mt-2 flex items-center gap-1 text-xs text-warning-foreground">
               <KeyRound className="size-3.5" /> A key for this unit is recorded as lost.
@@ -444,12 +448,13 @@ const inspectionColumns: Column<InspectionRow>[] = [
   { key: "inspector", header: "Inspector", cell: (r) => r.inspection.inspector },
 ];
 
-export function InspectionsTab({ rows }: { rows: InspectionRow[] }) {
+export function InspectionsTab({ rows, unitId, propertyId }: { rows: InspectionRow[]; unitId?: string; propertyId?: string }) {
+  const { openInspection, scheduleInspection } = useActions();
   const [openId, setOpenId] = useState<string | null>(rows[0]?.inspection.id ?? null);
   const selected = rows.find((r) => r.inspection.id === openId) ?? null;
   return (
     <div className="space-y-5">
-      <DataTable rows={rows} columns={inspectionColumns} rowKey={(r) => r.inspection.id} onRowClick={(r) => setOpenId(r.inspection.id)} rowClassName={(r) => (r.inspection.id === openId ? "bg-accent/50" : undefined)} dense emptyTitle="No inspections yet" emptyIcon={Gauge} />
+      <DataTable rows={rows} columns={[...inspectionColumns, { key: "open", header: "", sortable: false, noExport: true, cell: (r) => <span className="flex justify-end"><Button size="sm" variant="outline" className="h-7 px-2 text-xs" onClick={(e) => { e.stopPropagation(); openInspection(r.inspection.id); }}>Open</Button></span> }]} rowKey={(r) => r.inspection.id} onRowClick={(r) => setOpenId(r.inspection.id)} rowClassName={(r) => (r.inspection.id === openId ? "bg-accent/50" : undefined)} dense emptyTitle="No inspections yet" emptyIcon={Gauge} toolbar={unitId && propertyId ? <div className="flex gap-2"><Button size="sm" variant="outline" onClick={() => scheduleInspection({ unitId, propertyId, type: "annual_unit" })}>Schedule inspection</Button><Button size="sm" variant="outline" onClick={() => scheduleInspection({ unitId, propertyId, type: "move_out" })}>Move-out checklist</Button></div> : undefined} />
       {selected && selected.inspection.items.length > 0 && (
         <SectionCard title={`${labelize(selected.inspection.type)} inspection · ${formatDate(selected.inspection.completedDate ?? selected.inspection.scheduledDate)}`} description={selected.inspection.notes ?? undefined} flush>
           <ul className="divide-y">

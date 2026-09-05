@@ -12,6 +12,7 @@ export * from "./payments";
 export * from "./expenses";
 export * from "./finance";
 export * from "./maintenance";
+export * from "./inspections";
 
 /* -------------------------------- Import ---------------------------------- */
 
