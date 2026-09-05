@@ -15,3 +15,4 @@ export * from "./finance";
 export * from "./profitability";
 export * from "./inspections";
 export * from "./renovations";
+export * from "./forecast";

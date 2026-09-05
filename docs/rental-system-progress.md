@@ -16,7 +16,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 10 — inspections, move-in/out, keys, parking
 - [x] Phase 11 — renovations / CapEx
 - [x] Phase 12 — smart alerts engine
-- [ ] Phase 13 — cash flow & forecasting
+- [x] Phase 13 — cash flow & forecasting
 - [ ] Phase 14 — daily owner briefing
 - [ ] Phase 15 — AI document intelligence
 - [ ] Phase 16 — AI assistant 2.0
@@ -122,3 +122,8 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - UI: `/alerts` has status chips, a rule filter (`?type=`), Resolve / Reopen, Snooze (tomorrow / week / month), Wake, Dismiss, and a link to `/alerts/rules`; `/alerts/rules` lists every rule by category with open counts (linking to the filtered list), inline threshold editing with an Apply bar, and a mute switch per rule. Settings now summarises the rules and links there.
 - Demo verification (`tests/alerts.test.ts`): the seed raises the scripted situations (Karim overdue and expiring, Michel repeat late, B304 vacant, generator emergency, repeat plumbing, overdue service, over-budget line and lobby project, failed inspection item, unsettled deposit, overdue invoice); alert ids stay stable and clear when the condition clears; muting, snoozing and threshold changes recompute as expected.
 - No external notifications: the plan's "notification rules" are the in-app rule switches and thresholds; nothing leaves the app.
+
+## Phase 13 — cash flow & forecasting
+- Query (`src/lib/queries/forecast.ts`): `getCashFlowForecast` builds the next 1–12 months from records only — open rent instalments by due date (overdue lands in the first month), rent flagged "at risk" when the contract ends within 60 days without a renewal, unpaid invoices by due date, recurring expense patterns projected forward (skipped when the month is already booked), preventive services at their estimated cost, remaining budget of live projects spread to the target end (CapEx), and deposits due back when tenancies end. Each line carries a reference to its record for drill-down and a `projected` flag. Totals include a trailing six-month collection rate and the "likely collected" figure. `getVacancyCost` prices empty units (days empty, reference rent, lost so far, per-month run rate) and lists contracts ending within 60 days without a renewal.
+- UI (`/finance/cash-flow`, `cashflow-page.tsx`): KPIs (expected in / likely, going out with CapEx share, net with the first month the balance dips below zero, rent at risk), horizon chips (3 / 6 / 12 months), building filter, an opening-balance field, a stacked in/out chart with the running balance, a month-by-month breakdown that expands into every line (click opens the payment, expense, project, deposit or logs the service), vacancy cost table, and rent-at-risk list with Decide / Renew actions.
+- Labelled as an estimate throughout; nothing is invented and no external data is used. Nav: Finance › Cash flow. Tests: `tests/forecast.test.ts`.

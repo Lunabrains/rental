@@ -16,6 +16,7 @@ import {
   Gauge,
   Layers,
   LayoutDashboard,
+  LineChart,
   PiggyBank,
   Settings,
   Sparkles,
@@ -65,6 +66,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/finance/deposits", label: "Deposits", icon: PiggyBank, match: startsWith("/finance/deposits") },
       { href: "/finance/utilities", label: "Utilities", icon: Gauge, match: startsWith("/finance/utilities") },
       { href: "/finance/charges", label: "Common charges", icon: Layers, match: startsWith("/finance/charges") },
+      { href: "/finance/cash-flow", label: "Cash flow", icon: LineChart, match: startsWith("/finance/cash-flow") },
     ],
   },
   {
