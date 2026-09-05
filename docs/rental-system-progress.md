@@ -19,7 +19,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 13 — cash flow & forecasting
 - [x] Phase 14 — daily owner briefing
 - [x] Phase 15 — AI document intelligence
-- [ ] Phase 16 — AI assistant 2.0
+- [x] Phase 16 — AI assistant 2.0
 - [ ] Phase 17 — analytics & reporting
 - [ ] Cross-cutting — dashboard redesign, search & command palette, document center, timeline, integrity rules, audit & safety, seed data
 
@@ -139,3 +139,9 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Review UX (`document-review-dialog.tsx`): preview beside suggested category, links, dates and the fields the document states (High / Medium / Guess badges, evidence, comparison against the linked contract). Applying files the document (`updateDocument`, audited, undoable) and records the extraction and review (`markDocumentReviewed`). Financial and contract records are never created silently: invoices open the expense form prefilled (linked to the document), leases open the contract-terms dialog, warranties can update the asset's expiry with a switch.
 - Document centre (§12): filters by category, building, unit, tenant, supplier and date, a "Needs review" queue, KPIs (needs review, expiring, leases, invoices), drag-and-drop upload that opens the review screen, and a Review button on every row. Expense prefill accepts `documentId`, invoice number and dates.
 - Tests: `tests/documents.test.ts` (parsers, extraction on the seed, model sanitising, filing and review, centre filters).
+
+## Phase 16 — AI assistant 2.0
+- Tool layer (`src/lib/ai/tools.ts`): eleven new read-only tools over the query functions — `get_rent_roll`, `get_collection_rate`, `get_renewal_decisions`, `get_building_performance`, `get_unit_profitability`, `get_expenses_summary`, `get_maintenance_summary`, `get_assets_due`, `get_supplier_performance`, `get_cash_flow_forecast`, `get_briefing` — all scoped to the building on screen when relevant. The `answer` tool now accepts the new action kinds and `knownActionTarget` validates every id the model returns.
+- Local router (`src/lib/ai/answers-v2.ts`, called first from `answerLocally`): instant answers for every question type in plan §16 — collection rate with six-month history, overdue beyond N days, renewals awaiting a decision, lowest-occupancy building, longest vacancies, most profitable building, a building's income this year, the unit with the highest maintenance cost, category spend, categories that rose month over month, cash-flow forecast, overdue maintenance, recurring problems per unit, services due, supplier repeat-issue ranking and spend per supplier, the daily briefing, and two safe actions (set a reminder for a tenant, draft a work order for a unit). English and Arabic (`i18n.ts` `v2` strings, `arabic.ts` lexicon extended with finance, maintenance, supplier and action vocabulary).
+- Safe actions: `create_reminder` opens the reminder form; `create_work_order` opens the work-order form prefilled; `resolve_alert` asks for confirmation in a toast before running; every other data-changing action already opens its dialog. The system prompt tells the model it never changes data itself and must label forecasts as estimates.
+- Tests (`tests/assistant-v2.test.ts`): each required question answered locally from the seed with valid action targets, Arabic variants, building scoping, every new tool returning scoped data, and action-target validation.

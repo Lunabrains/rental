@@ -922,6 +922,7 @@ export type AlertActionKind =
   | "schedule_service"
   | "settle_deposit"
   | "complete_reminder"
+  | "create_reminder"
   | "resolve_alert";
 
 export interface AlertAction {

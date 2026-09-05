@@ -22,6 +22,7 @@ import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
 import { RecordPaymentDialog } from "@/components/flows/record-payment-dialog";
 import { RenewContractDialog } from "@/components/flows/renew-contract-dialog";
+import { completeReminder, resolveAlert } from "@/lib/commands";
 import { indexStore } from "@/lib/data/store";
 import { daysSince } from "@/lib/date";
 import { useStoreContext } from "@/lib/data/store-context";
@@ -117,7 +118,7 @@ const ActionsContext = createContext<ActionsContextValue | null>(null);
 export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { store } = useStoreContext();
+  const { store, run } = useStoreContext();
   const [flow, setFlow] = useState<Flow>(null);
   const closeFlow = useCallback(() => setFlow(null), []);
 
@@ -252,6 +253,35 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return openInspection(action.targetId);
         case "view_renovation":
           return openRenovation(action.targetId);
+        case "create_reminder": {
+          const i = indexStore(store);
+          const t = i.tenantById.get(action.targetId);
+          if (t) return createReminder({ entityType: "tenant", entityId: t.id, label: t.fullName, title: `Follow up with ${t.fullName}` });
+          const u = i.unitById.get(action.targetId);
+          if (u) return createReminder({ entityType: "unit", entityId: u.id, label: `${i.propertyById.get(u.propertyId)?.name ?? ""} ${u.unitNumber}`.trim() });
+          const p = i.propertyById.get(action.targetId);
+          return createReminder({ entityType: p ? "property" : null, entityId: p?.id ?? null, label: p?.name ?? "Portfolio" });
+        }
+        case "resolve_alert": {
+          const a = store.alerts.find((x) => x.id === action.targetId);
+          if (!a) return;
+          toast(`Mark "${a.title}" as handled?`, {
+            description: "It stays hidden until the underlying condition changes.",
+            action: {
+              label: "Confirm",
+              onClick: () => {
+                const { undo } = run(resolveAlert(a.id, true));
+                toast.success("Alert resolved", { action: undo ? { label: "Undo", onClick: undo } : undefined });
+              },
+            },
+          });
+          return;
+        }
+        case "complete_reminder": {
+          const { undo } = run(completeReminder(action.targetId, true));
+          toast.success("Reminder done", { action: undo ? { label: "Undo", onClick: undo } : undefined });
+          return;
+        }
         case "schedule_inspection": {
           const c = indexStore(store).contractById.get(action.targetId);
           if (!c) return scheduleInspection({});
@@ -290,7 +320,7 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, openSupplier, openInspection, scheduleInspection, openRenovation, router, store],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, router, store, run],
   );
 
   const value = useMemo<ActionsContextValue>(

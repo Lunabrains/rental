@@ -1,6 +1,8 @@
 import { indexStore } from "@/lib/data/store";
 import { isOccupying } from "@/lib/derived/recompute";
-import { daysUntil, today } from "@/lib/date";
+import { getDailyBriefing } from "@/lib/derived/briefing";
+import { collectionRate } from "@/lib/derived/metrics";
+import { addPeriods, currentPeriod, daysUntil, today } from "@/lib/date";
 import {
   computeVacancyOpportunity,
   getActivity,
@@ -18,8 +20,19 @@ import {
   getUpcomingPayments,
   getVacantUnits,
   searchAll,
+  getRentRoll,
+  getRenewals,
+  getPortfolioComparison,
+  getUnitRankings,
+  getExpenses,
+  getMaintenanceSummary,
+  getWorkOrders,
+  getPreventivePlans,
+  getSuppliers,
+  getSupplierDetails,
+  getCashFlowForecast,
 } from "@/lib/queries";
-import type { AlertCategory, AlertSeverity, ID, Property, Store } from "@/types";
+import type { AlertCategory, AlertSeverity, ExpenseCategory, ID, Property, Store } from "@/types";
 
 import type { PageContext, ToolDefinition } from "./types";
 
@@ -133,6 +146,61 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     input_schema: { type: "object", properties: { query: { type: "string" } }, required: ["query"], additionalProperties: false },
   },
   {
+    name: "get_rent_roll",
+    description: "Rent roll for a month: every rentable unit with tenant, rent due, paid, outstanding and status, plus summary totals and the collection rate.",
+    input_schema: { type: "object", properties: { ...optionalProperty, period: { type: "string", description: "YYYY-MM; defaults to this month" } }, additionalProperties: false },
+  },
+  {
+    name: "get_collection_rate",
+    description: "Collection rate (collected ÷ due) for a month with the six-month history.",
+    input_schema: { type: "object", properties: { ...optionalProperty, period: { type: "string", description: "YYYY-MM; defaults to this month" } }, additionalProperties: false },
+  },
+  {
+    name: "get_renewal_decisions",
+    description: "Contracts ending within 90 days that still await the owner's renewal decision, with reliability and arrears.",
+    input_schema: { type: "object", properties: { ...optionalProperty }, additionalProperties: false },
+  },
+  {
+    name: "get_building_performance",
+    description: "Building-by-building profitability: revenue, collected, operating expenses, maintenance, CapEx, NOI, margin, occupancy, outstanding and health score. Also returns the best and worst building.",
+    input_schema: { type: "object", properties: { window: { type: "string", enum: ["month", "ytd", "12m"], description: "Defaults to ytd" } }, additionalProperties: false },
+  },
+  {
+    name: "get_unit_profitability",
+    description: "Units ranked by net contribution or maintenance cost over the window: rent billed, costs, net, maintenance, vacancy days.",
+    input_schema: { type: "object", properties: { ...optionalProperty, window: { type: "string", enum: ["month", "ytd", "12m"] }, sort: { type: "string", enum: ["net", "maintenance", "costs"], description: "Defaults to net (best first); maintenance sorts highest maintenance first" }, limit: { type: "number" } }, additionalProperties: false },
+  },
+  {
+    name: "get_expenses_summary",
+    description: "Expense totals for a period (YYYY or YYYY-MM) by category, building and supplier, with month-over-month change per category, optionally filtered by category.",
+    input_schema: { type: "object", properties: { ...optionalProperty, period: { type: "string", description: "YYYY or YYYY-MM; defaults to this year" }, category: { type: "string" } }, additionalProperties: false },
+  },
+  {
+    name: "get_maintenance_summary",
+    description: "Open, emergency, awaiting-approval and overdue work orders, spend, average resolution time, repeat issues, and the list of overdue jobs and repeat-issue units.",
+    input_schema: { type: "object", properties: { ...optionalProperty }, additionalProperties: false },
+  },
+  {
+    name: "get_assets_due",
+    description: "Preventive services due or overdue within N days, with asset, building, supplier and estimated cost.",
+    input_schema: { type: "object", properties: { ...optionalProperty, days: { type: "number", description: "Defaults to 30" } }, additionalProperties: false },
+  },
+  {
+    name: "get_supplier_performance",
+    description: "Supplier scores: response and completion days, repeat-issue rate, cost vs quote, jobs and spend. Pass a supplier name for one supplier's detail including what was paid this year.",
+    input_schema: { type: "object", properties: { supplier: { type: "string", description: "Supplier name or id; omit for all" } }, additionalProperties: false },
+  },
+  {
+    name: "get_cash_flow_forecast",
+    description: "Month-by-month cash forecast for the next 1–12 months: expected rent, rent at risk, invoices, recurring costs, services, CapEx, deposit refunds, net and running balance. An estimate built from the records.",
+    input_schema: { type: "object", properties: { ...optionalProperty, months: { type: "number", description: "1–12, defaults to 3" } }, additionalProperties: false },
+  },
+  {
+    name: "get_briefing",
+    description: "Today's owner briefing: headline, narrative and the items under Decide today, Money, Today & this week, Operations and Good news, each with clickable actions.",
+    input_schema: { type: "object", properties: {}, additionalProperties: false },
+  },
+  {
     name: "answer",
     description:
       "Deliver the final answer to the user. Call this exactly once when you have what you need. Use a table for lists, cards for one or two entities, a one-line recommendation when there is a clear next step, and actions the user can click.",
@@ -165,9 +233,9 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
           items: {
             type: "object",
             properties: {
-              kind: { type: "string", enum: ["record_payment", "send_reminder", "renew_contract", "mark_as_leaving", "view_unit", "view_tenant", "view_property", "view_contract"] },
+              kind: { type: "string", enum: ["record_payment", "send_reminder", "renew_contract", "mark_as_leaving", "view_unit", "view_tenant", "view_property", "view_contract", "view_work_order", "view_asset", "view_supplier", "view_inspection", "view_renovation", "view_deposit", "view_expense", "create_work_order", "create_reminder", "approve_work_order", "schedule_service", "settle_deposit", "resolve_alert"] },
               label: { type: "string" },
-              targetId: { type: "string", description: "The id from the tool results: payment id, contract id, unit id, tenant id or property id" },
+              targetId: { type: "string", description: "The id from the tool results: payment, contract, unit, tenant, property, work order, asset, supplier, inspection, renovation, deposit, expense, plan or alert id. Actions that change data open a form the owner must confirm." },
             },
             required: ["kind", "label", "targetId"],
             additionalProperties: false,
@@ -449,6 +517,122 @@ export function executeTool(store: Store, name: string, input: Record<string, un
         contracts: r.contracts.map((x) => ({ contractId: x.contract.id, number: x.contract.contractNumber, tenant: x.tenant?.fullName ?? null })),
       };
     }
+    case "get_rent_roll": {
+      const period = typeof input.period === "string" && /^\d{4}-\d{2}$/.test(input.period) ? input.period : currentPeriod();
+      const rr = getRentRoll(store, { propertyId: scopeId, period }, base);
+      return { period, summary: rr.summary, rows: rr.rows.slice(0, 60).map((r) => ({ unitId: r.unit.id, property: r.property.name, unit: r.unit.unitNumber, tenantId: r.tenant?.id ?? null, tenant: r.tenant?.fullName ?? null, contractId: r.contract?.id ?? null, paymentId: r.payment?.id ?? null, rent: money(r.rent), due: money(r.amountDue), paid: money(r.amountPaid), outstanding: money(r.outstanding), status: r.status, daysOverdue: r.daysOverdue, contractEnd: r.contractEnd })) };
+    }
+    case "get_collection_rate": {
+      const period = typeof input.period === "string" && /^\d{4}-\d{2}$/.test(input.period) ? input.period : currentPeriod();
+      const payments = store.payments.filter((p) => !scopeId || p.propertyId === scopeId);
+      const cr = collectionRate(payments, period, period === currentPeriod() ? base : undefined);
+      const history = Array.from({ length: 6 }, (_, i) => addPeriods(period, -5 + i)).map((p) => {
+        const r = collectionRate(payments, p, p === currentPeriod() ? base : undefined);
+        return { month: p, due: money(r.due), collected: money(r.collected), ratePct: pct(r.rate) };
+      });
+      return { period, property: scope?.name ?? null, due: money(cr.due), collected: money(cr.collected), rate: pct(cr.rate), history };
+    }
+    case "get_renewal_decisions":
+      return getRenewals(store, 90, scopeId, base)
+        .filter((r) => r.contract.renewalStatus === "awaiting_decision" || (r.contract.renewalDecision === null && r.daysRemaining <= 60))
+        .map((r) => ({ contractId: r.contract.id, tenantId: r.tenant.id, tenant: r.tenant.fullName, property: r.property.name, unitId: r.unit.id, unit: r.unit.unitNumber, endDate: r.contract.endDate, daysRemaining: r.daysRemaining, monthlyRent: money(r.contract.monthlyRent), proposedRent: r.contract.proposedRent, suggestedRent: r.suggestedRent, reliable: r.reliable, hasOverdue: r.hasOverdue, outstanding: money(r.outstanding), renewalStatus: r.contract.renewalStatus }));
+    case "get_building_performance": {
+      const window = input.window === "month" || input.window === "12m" ? input.window : "ytd";
+      const cmp = getPortfolioComparison(store, window, base);
+      const row = (r: (typeof cmp.rows)[number]) => ({ propertyId: r.property.id, building: r.property.name, units: r.units, occupancyPct: pct(r.occupancy), revenue: money(r.revenue), collected: money(r.collected), collectionPct: pct(r.collectionRate), operatingExpenses: money(r.operatingExpenses), maintenance: money(r.maintenance), capex: money(r.capex), noi: money(r.noi), marginPct: pct(r.margin), noiPerUnit: money(r.noiPerUnit), outstanding: money(r.outstanding), vacancyLoss: money(r.vacancyLoss), health: r.health });
+      return { window: cmp.window, label: cmp.label, rows: cmp.rows.map(row), best: cmp.best ? row(cmp.best) : null, worst: cmp.worst ? row(cmp.worst) : null };
+    }
+    case "get_unit_profitability": {
+      const window = input.window === "month" || input.window === "ytd" ? input.window : "12m";
+      const sort = input.sort === "maintenance" ? "maintenance" : input.sort === "costs" ? "costs" : "net";
+      const limit = Number(input.limit ?? 15) || 15;
+      const rows = getUnitRankings(store, window, scopeId, base);
+      const sorted = sort === "net" ? rows : [...rows].sort((a, b) => b[sort] - a[sort]);
+      return sorted.slice(0, limit).map((r) => ({ unitId: r.unit.id, property: r.property.name, unit: r.unit.unitNumber, tenant: r.tenant, rentBilled: money(r.rentBilled), costs: money(r.costs), maintenance: money(r.maintenance), net: money(r.net), vacancyDays: r.vacancyDays }));
+    }
+    case "get_expenses_summary": {
+      const period = typeof input.period === "string" && /^\d{4}(-\d{2})?$/.test(input.period) ? input.period : base.slice(0, 4);
+      const category = typeof input.category === "string" ? (input.category.toLowerCase().replace(/\s+/g, "_") as ExpenseCategory) : undefined;
+      const rows = getExpenses(store, { propertyId: scopeId, period, category }, base);
+      const sumBy = <K extends string>(key: (r: (typeof rows)[number]) => K) => {
+        const m = new Map<K, { amount: number; count: number }>();
+        for (const r of rows) {
+          const k = key(r);
+          const cur = m.get(k) ?? { amount: 0, count: 0 };
+          cur.amount += r.expense.amount;
+          cur.count += 1;
+          m.set(k, cur);
+        }
+        return [...m.entries()].map(([k, v]) => ({ key: k, amount: money(v.amount), count: v.count })).sort((a, b) => b.amount - a.amount);
+      };
+      const cur = currentPeriod();
+      const prev = addPeriods(cur, -1);
+      const byCat = (p: string) => {
+        const m = new Map<string, number>();
+        for (const r of getExpenses(store, { propertyId: scopeId, period: p }, base)) m.set(r.expense.category, (m.get(r.expense.category) ?? 0) + r.expense.amount);
+        return m;
+      };
+      const a = byCat(cur);
+      const b = byCat(prev);
+      return {
+        period,
+        total: money(rows.reduce((n, r) => n + r.expense.amount, 0)),
+        count: rows.length,
+        capex: money(rows.filter((r) => r.expense.classification === "capex").reduce((n, r) => n + r.expense.amount, 0)),
+        byCategory: sumBy((r) => r.expense.category),
+        byBuilding: sumBy((r) => r.property.name),
+        bySupplier: sumBy((r) => r.supplier?.name ?? "none"),
+        monthOverMonth: [...new Set([...a.keys(), ...b.keys()])].map((c) => ({ category: c, thisMonth: money(a.get(c) ?? 0), lastMonth: money(b.get(c) ?? 0), change: money((a.get(c) ?? 0) - (b.get(c) ?? 0)) })).sort((x, y) => y.change - x.change),
+        largest: rows.slice(0, 10).map((r) => ({ expenseId: r.expense.id, date: r.expense.expenseDate, description: r.expense.description, category: r.expense.category, building: r.property.name, supplier: r.supplier?.name ?? null, amount: money(r.expense.amount), status: r.expense.paymentStatus })),
+      };
+    }
+    case "get_maintenance_summary": {
+      const m = getMaintenanceSummary(store, scopeId, base);
+      const open = getWorkOrders(store, { propertyId: scopeId, status: "open" }, base);
+      const groups = new Map<string, { unitId: string; unit: string; property: string; category: string; count: number }>();
+      for (const w of store.workOrders) {
+        if (w.status === "cancelled" || !w.unitId || (scopeId && w.propertyId !== scopeId)) continue;
+        const key = `${w.unitId}|${w.category}`;
+        const g = groups.get(key) ?? { unitId: w.unitId, unit: idx.unitById.get(w.unitId)?.unitNumber ?? "", property: idx.propertyById.get(w.propertyId)?.name ?? "", category: w.category, count: 0 };
+        g.count += 1;
+        groups.set(key, g);
+      }
+      return {
+        ...m,
+        spendLast30: money(m.spendLast30),
+        spendThisMonth: money(m.spendThisMonth),
+        overdue: open.filter((r) => r.overdue).sort((a, b) => b.ageDays - a.ageDays).map((r) => ({ workOrderId: r.workOrder.id, number: r.workOrder.number, title: r.workOrder.title, property: r.property.name, unit: r.unit?.unitNumber ?? null, status: r.workOrder.status, priority: r.workOrder.priority, ageDays: r.ageDays, supplier: r.supplier?.name ?? null })),
+        awaitingApprovalList: open.filter((r) => r.workOrder.status === "awaiting_approval").map((r) => ({ workOrderId: r.workOrder.id, number: r.workOrder.number, title: r.workOrder.title, quote: money(r.workOrder.estimatedCost ?? 0), supplier: r.supplier?.name ?? null })),
+        repeatIssueUnits: [...groups.values()].filter((g) => g.count >= 2).sort((a, b) => b.count - a.count),
+      };
+    }
+    case "get_assets_due": {
+      const days = Number(input.days ?? 30) || 30;
+      return getPreventivePlans(store, { propertyId: scopeId }, base)
+        .filter((r) => r.state !== "paused" && r.daysUntil <= days)
+        .sort((a, b) => a.daysUntil - b.daysUntil)
+        .map((r) => ({ planId: r.plan.id, service: r.plan.maintenanceType, assetId: r.asset?.id ?? null, asset: r.asset?.name ?? null, property: r.property.name, nextServiceDate: r.plan.nextServiceDate, daysUntil: r.daysUntil, state: r.state, supplier: r.supplier?.name ?? null, estimatedCost: r.plan.estimatedCost }));
+    }
+    case "get_supplier_performance": {
+      const q = typeof input.supplier === "string" ? input.supplier.trim().toLowerCase() : "";
+      const rows = getSuppliers(store);
+      const shape = (r: (typeof rows)[number]) => ({ supplierId: r.supplier.id, name: r.supplier.name, category: r.supplier.category, active: r.supplier.active, rating: r.supplier.rating, score: r.score, scoreLabel: r.scoreLabel, jobs: r.jobs, completedJobs: r.completedJobs, openJobs: r.openJobs, avgResponseDays: r.avgResponseDays, avgCompletionDays: r.avgCompletionDays, repeatIssueRatePct: r.repeatIssueRate === null ? null : pct(r.repeatIssueRate), costVsQuotePct: r.costVariance === null ? null : pct(r.costVariance - 1), totalSpend: money(r.totalSpend), lastJobAt: r.lastJobAt });
+      if (!q) return rows.map(shape);
+      const hit = rows.find((r) => r.supplier.id === q || r.supplier.name.toLowerCase() === q) ?? rows.find((r) => r.supplier.name.toLowerCase().includes(q) || (r.supplier.company ?? "").toLowerCase().includes(q));
+      if (!hit) return { error: `No supplier matches "${input.supplier}"`, known: rows.map((r) => r.supplier.name) };
+      const d = getSupplierDetails(store, hit.supplier.id, base);
+      const year = base.slice(0, 4);
+      return { ...shape(hit), paidThisYear: money((d?.expenses ?? []).filter((e) => e.expense.expenseDate.startsWith(year)).reduce((n, e) => n + e.expense.amount, 0)), spendByYear: d?.spendByYear ?? [], recentJobs: (d?.workOrders ?? []).slice(0, 8).map((w) => ({ workOrderId: w.workOrder.id, number: w.workOrder.number, title: w.workOrder.title, status: w.workOrder.status, property: w.property.name, cost: money(w.cost) })) };
+    }
+    case "get_cash_flow_forecast": {
+      const months = Math.max(1, Math.min(12, Number(input.months ?? 3) || 3));
+      const f = getCashFlowForecast(store, { months, propertyId: scopeId }, base);
+      return { from: f.from, to: f.to, collectionRatePct: pct(f.collectionRate), likelyCollected: money(f.likelyCollected), vacancyRunRate: money(f.vacancyRunRate), totals: { inflows: money(f.totals.inflows), rentAtRisk: money(f.totals.rentAtRisk), outflows: money(f.totals.outflows), capex: money(f.totals.capex), net: money(f.totals.net) }, months: f.months.map((m) => ({ month: m.period, rentExpected: money(m.rentExpected), rentAtRisk: money(m.rentAtRisk), invoicesDue: money(m.expensesDue), recurring: money(m.expensesRecurring), services: money(m.services), capex: money(m.capex), depositRefunds: money(m.depositRefunds), inflows: money(m.inflows), outflows: money(m.outflows), net: money(m.net), cumulative: money(m.cumulative) })) };
+    }
+    case "get_briefing": {
+      const b = getDailyBriefing(store, base);
+      return { date: b.date, headline: b.headline, narrative: b.narrative, numbers: b.numbers, sections: b.sections.map((s) => ({ key: s.key, title: s.title, items: s.items.slice(0, 10).map((i) => ({ id: i.id, title: i.title, detail: i.detail, tone: i.tone, actions: i.actions })) })) };
+    }
     default:
       return { error: `Unknown tool ${name}` };
   }
@@ -471,6 +655,31 @@ export function knownActionTarget(store: Store, kind: string, id: ID): boolean {
       return idx.unitById.has(id);
     case "view_property":
       return idx.propertyById.has(id);
+    case "view_work_order":
+    case "approve_work_order":
+      return idx.workOrderById.has(id);
+    case "view_asset":
+      return idx.assetById.has(id);
+    case "view_supplier":
+      return idx.supplierById.has(id);
+    case "view_inspection":
+      return idx.inspectionById.has(id);
+    case "view_renovation":
+      return idx.renovationById.has(id);
+    case "view_deposit":
+    case "settle_deposit":
+      return idx.depositById.has(id);
+    case "view_expense":
+    case "record_expense_payment":
+      return idx.expenseById.has(id);
+    case "schedule_service":
+      return idx.planById.has(id);
+    case "create_work_order":
+      return idx.unitById.has(id) || idx.propertyById.has(id) || idx.assetById.has(id) || idx.inspectionById.has(id);
+    case "create_reminder":
+      return idx.tenantById.has(id) || idx.unitById.has(id) || idx.propertyById.has(id);
+    case "resolve_alert":
+      return store.alerts.some((a) => a.id === id);
     default:
       return false;
   }
