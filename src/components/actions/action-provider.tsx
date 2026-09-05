@@ -5,12 +5,15 @@ import { createContext, useCallback, useContext, useMemo, useState } from "react
 import { toast } from "sonner";
 
 import { AddTenantDialog } from "@/components/flows/add-tenant-dialog";
+import { ContractTermsDialog } from "@/components/flows/contract-terms-dialog";
+import { ReminderDialog, type ReminderTarget } from "@/components/flows/reminder-dialog";
+import { RenewalDecisionDialog } from "@/components/flows/renewal-decision-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
 import { RecordPaymentDialog } from "@/components/flows/record-payment-dialog";
 import { RenewContractDialog } from "@/components/flows/renew-contract-dialog";
 import { indexStore } from "@/lib/data/store";
 import { useStoreContext } from "@/lib/data/store-context";
-import type { AlertAction, ID } from "@/types";
+import type { AlertAction, ID, RenewalDecision } from "@/types";
 
 export type DrawerTab = "tenant" | "contract" | "payments" | "documents" | "activity";
 
@@ -19,6 +22,9 @@ type Flow =
   | { kind: "renew"; contractId: ID }
   | { kind: "leaving"; contractId: ID }
   | { kind: "add_tenant"; unitId: ID }
+  | { kind: "renewal_decision"; contractId: ID; initial?: RenewalDecision | null }
+  | { kind: "contract_terms"; contractId: ID }
+  | { kind: "reminder"; target: ReminderTarget }
   | null;
 
 export interface ActionsContextValue {
@@ -38,6 +44,9 @@ export interface ActionsContextValue {
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
+  renewalDecision: (contractId: ID, initial?: RenewalDecision | null) => void;
+  editContractTerms: (contractId: ID) => void;
+  createReminder: (target: ReminderTarget) => void;
   sendReminder: (tenantId: ID) => void;
   uploadDocument: (targetId: ID) => void;
 }
@@ -89,6 +98,9 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
+  const renewalDecision = useCallback((contractId: ID, initial?: RenewalDecision | null) => setFlow({ kind: "renewal_decision", contractId, initial }), []);
+  const editContractTerms = useCallback((contractId: ID) => setFlow({ kind: "contract_terms", contractId }), []);
+  const createReminder = useCallback((target: ReminderTarget) => setFlow({ kind: "reminder", target }), []);
 
   const sendReminder = useCallback(
     (tenantId: ID) => {
@@ -138,8 +150,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -149,6 +161,9 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "renew" && <RenewContractDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
       {flow?.kind === "leaving" && <MarkLeavingDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
       {flow?.kind === "add_tenant" && <AddTenantDialog key={flow.unitId} unitId={flow.unitId} onClose={closeFlow} />}
+      {flow?.kind === "renewal_decision" && <RenewalDecisionDialog key={flow.contractId} contractId={flow.contractId} initial={flow.initial} onClose={closeFlow} />}
+      {flow?.kind === "contract_terms" && <ContractTermsDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
+      {flow?.kind === "reminder" && <ReminderDialog key={`${flow.target.entityType}-${flow.target.entityId}`} target={flow.target} onClose={closeFlow} />}
     </ActionsContext.Provider>
   );
 }

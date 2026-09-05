@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { Search, Users } from "lucide-react";
 
 import { NeutralPill } from "@/components/common/badges";
+import { StatusBadge } from "@/components/common/status-badge";
 import { Chips } from "@/components/common/chips";
 import { PageHeader } from "@/components/common/page-header";
 import { EmptyState } from "@/components/common/states";
@@ -87,6 +88,7 @@ export function TenantsPage() {
                   <th className="px-4 py-2.5 font-medium">Contract ends</th>
                   <th className="px-4 py-2.5 text-right font-medium">Outstanding</th>
                   <th className="px-4 py-2.5 text-right font-medium">Late</th>
+                  <th className="px-4 py-2.5 font-medium">Reliability</th>
                 </tr>
               </thead>
               <tbody>
@@ -113,6 +115,7 @@ export function TenantsPage() {
                       </td>
                       <td className={cn("tabular px-4 py-2.5 text-right", r.outstanding > 0 ? "font-medium text-critical" : "text-muted-foreground")}>{r.outstanding > 0 ? formatMoney(r.outstanding) : "—"}</td>
                       <td className={cn("tabular px-4 py-2.5 text-right", r.lateCount >= 3 ? "font-medium text-critical" : "text-muted-foreground")}>{r.lateCount > 0 ? `${r.lateCount}×` : "—"}</td>
+                      <td className="px-4 py-2.5">{r.reliabilityScore === null ? <span className="text-xs text-muted-foreground">—</span> : <StatusBadge value={r.reliabilityLabel} label={`${r.reliabilityScore} · ${r.reliabilityLabel}`} />}</td>
                     </tr>
                   );
                 })}

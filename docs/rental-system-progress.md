@@ -6,7 +6,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 0 — repository audit (`docs/implementation-notes.md`)
 - [x] Phase 1 — data foundation & shared infrastructure
 - [x] Phase 2 — buildings & unit 360°
-- [ ] Phase 3 — tenant 360° & contract intelligence
+- [x] Phase 3 — tenant 360° & contract intelligence
 - [ ] Phase 4 — rent roll & payment intelligence
 - [ ] Phase 5 — expenses & profitability
 - [ ] Phase 6 — budgets, deposits, utilities, common charges
@@ -45,3 +45,10 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Unit 360° page at `/units/[id]` (`src/components/units/unit-page.tsx`): Overview / Tenant & contract / Payments / Maintenance / Inspections / Utilities / Documents / History; drawer links to it.
 - Documents: real uploads through `AttachmentUploader` (drawer tab, building documents); uploaded files preview from their object URL.
 - Unresolved: work-order / asset rows do not open detail pages yet (Phases 7–8); the timeline is not yet on tenants/contracts/assets (§13 continues with those modules).
+
+## Phase 3 — tenant 360° & contract intelligence
+- Tenant profile (`src/components/tenants/tenant-page.tsx`) rebuilt as Tenant 360°: KPIs (lifetime paid, outstanding, late payments, reliability score with breakdown, deposit held, maintenance), tabs Overview / Payments (late-payment history + full ledger) / Contracts (renewal chain with decisions) / Maintenance (requests + inspections) / Documents (uploader) / Notes & reminders / Timeline. Tenants list shows the reliability label.
+- Contract intelligence: `setRenewalDecision`, `updateContractTerms`, `updateTenantNotes` commands (audited, undoable); renewal-decision, contract-terms and reminder dialogs wired into the actions provider and the unit drawer's contract tab; increase clause → suggested renewal rent.
+- Expiring-contracts screen: Contracts › Renewals (`src/components/contracts/renewals-board.tsx`) with tenant, building, unit, rent, expiry, days left, reliability, renewal status, proposed rent, notes and one-click renew / do-not-renew / awaiting / reminder / open tenant / run renewal.
+- Queries: `src/lib/queries/tenants.ts` (`getTenant360`, `getRenewals`, `suggestFromClause`).
+- Unresolved: historical contract "versions" are the renewal chain (no separate version table); reminders are the follow-up/task mechanism.

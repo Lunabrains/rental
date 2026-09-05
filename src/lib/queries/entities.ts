@@ -1,5 +1,6 @@
 import { indexStore } from "@/lib/data/store";
-import { isOccupying } from "@/lib/derived/recompute";
+import { isOccupying } from "@/lib/derived/occupancy";
+import { reliabilityLabel, tenantReliability, type ReliabilityLabel } from "@/lib/derived/metrics";
 import { daysSince, daysUntil, today } from "@/lib/date";
 import type {
   ActivityLog,
@@ -247,6 +248,8 @@ export interface TenantRow {
   outstanding: number;
   lateCount: number;
   hasOverdue: boolean;
+  reliabilityScore: number | null;
+  reliabilityLabel: ReliabilityLabel;
 }
 
 export function getTenants(store: Store): TenantRow[] {
@@ -257,12 +260,15 @@ export function getTenants(store: Store): TenantRow[] {
       const currentContract = contracts.filter(isOccupying).sort((a, b) => (a.startDate < b.startDate ? 1 : -1))[0] ?? null;
       const payments = idx.paymentsByTenant.get(tenant.id) ?? [];
       const totals = ledgerTotals(payments);
+      const reliability = tenantReliability(payments);
       return {
         tenant,
         current: currentContract ? withPlace(store, currentContract) : null,
         outstanding: totals.outstanding,
         lateCount: totals.lateCount,
         hasOverdue: payments.some((p) => p.status === "overdue" || p.status === "partial"),
+        reliabilityScore: reliability.score,
+        reliabilityLabel: reliabilityLabel(reliability.score),
       };
     })
     .sort((a, b) => a.tenant.fullName.localeCompare(b.tenant.fullName));

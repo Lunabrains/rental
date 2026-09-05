@@ -7,6 +7,7 @@ import { FileText, Search } from "lucide-react";
 import { useActions } from "@/components/actions/action-provider";
 import { ContractStatusBadge, NeutralPill } from "@/components/common/badges";
 import { Chips } from "@/components/common/chips";
+import { RenewalsBoard } from "@/components/contracts/renewals-board";
 import { PageHeader } from "@/components/common/page-header";
 import { EmptyState } from "@/components/common/states";
 import { Button } from "@/components/ui/button";
@@ -17,7 +18,7 @@ import { formatDate, formatMoney } from "@/lib/format";
 import { getContracts } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-type StatusFilter = "active" | "expiring" | "expired" | "history" | "all";
+type StatusFilter = "active" | "expiring" | "renewals" | "expired" | "history" | "all";
 type Window = "30" | "60" | "90";
 
 export function ContractsPage() {
@@ -28,7 +29,8 @@ export function ContractsPage() {
   const [query, setQuery] = useState("");
 
   const expiringParam = params.get("expiring");
-  const status: StatusFilter = expiringParam ? "expiring" : ((params.get("status") as StatusFilter) ?? "active");
+  const statusParam = params.get("status") as StatusFilter | null;
+  const status: StatusFilter = statusParam === "renewals" ? "renewals" : expiringParam ? "expiring" : (statusParam ?? "active");
   const window: Window = (["30", "60", "90"].includes(expiringParam ?? "") ? expiringParam : "30") as Window;
   const propertyId = params.get("property") ?? "all";
 
@@ -56,6 +58,8 @@ export function ContractsPage() {
           return isOccupying(c);
         case "expiring":
           return isOccupying(c) && r.daysRemaining >= 0 && r.daysRemaining <= Number(window);
+        case "renewals":
+          return isOccupying(c) && r.daysRemaining <= 90;
         case "expired":
           return c.status === "expired" || (isOccupying(c) && r.daysRemaining < 0);
         case "history":
@@ -71,6 +75,7 @@ export function ContractsPage() {
     return {
       active: active.length,
       expiring: active.filter((r) => r.daysRemaining >= 0 && r.daysRemaining <= Number(window)).length,
+      renewals: active.filter((r) => r.daysRemaining <= 90).length,
       expired: rows.filter((r) => r.contract.status === "expired" || (isOccupying(r.contract) && r.daysRemaining < 0)).length,
       history: rows.filter((r) => r.contract.status === "renewed" || r.contract.status === "terminated").length,
       all: rows.length,
@@ -89,6 +94,7 @@ export function ContractsPage() {
           options={[
             { value: "active", label: "Active", count: counts.active },
             { value: "expiring", label: `Expiring ${window}d`, count: counts.expiring },
+            { value: "renewals", label: "Renewals", count: counts.renewals },
             { value: "expired", label: "Expired", count: counts.expired },
             { value: "history", label: "History", count: counts.history },
             { value: "all", label: "All", count: counts.all },
@@ -133,7 +139,9 @@ export function ContractsPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {status === "renewals" ? (
+        <RenewalsBoard days={90} propertyId={propertyId === "all" ? undefined : propertyId} />
+      ) : filtered.length === 0 ? (
         <EmptyState icon={FileText} title="No contracts match" />
       ) : (
         <div className="overflow-hidden rounded-lg border bg-card shadow-xs">

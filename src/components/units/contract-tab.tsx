@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
 
 export function ContractTab({ details, onPreview }: { details: UnitDetails; onPreview: (doc: StoredDocument) => void }) {
-  const { renewContract, markAsLeaving } = useActions();
+  const { renewContract, markAsLeaving, editContractTerms, renewalDecision } = useActions();
   const c = details.contract;
   if (!c) return null;
 
@@ -110,8 +110,11 @@ export function ContractTab({ details, onPreview }: { details: UnitDetails; onPr
         <Button variant="outline" onClick={() => markAsLeaving(c.id)}>
           <LogOut className="size-4" /> Mark as leaving
         </Button>
-        <Button variant="ghost">
-          <Pencil className="size-4" /> Edit
+        <Button variant="outline" onClick={() => renewalDecision(c.id)}>
+          Renewal decision
+        </Button>
+        <Button variant="ghost" onClick={() => editContractTerms(c.id)}>
+          <Pencil className="size-4" /> Edit terms
         </Button>
       </div>
     </div>

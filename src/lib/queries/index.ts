@@ -10,3 +10,4 @@ export * from "./lists";
 export * from "./operations";
 export * from "./buildings";
 export * from "./units";
+export * from "./tenants";
