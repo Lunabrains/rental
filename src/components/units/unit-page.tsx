@@ -388,6 +388,7 @@ function ProfitabilityTab({ unitId }: { unitId: string }) {
 /* -------------------------------- Maintenance ----------------------------- */
 
 function MaintenanceTab({ u }: { u: Unit360 }) {
+  const { openWorkOrder, createWorkOrder } = useActions();
   const open = u.workOrders.filter((w) => w.isOpen);
   const repeats = u.alerts.filter((a) => a.type === "maintenance_repeat_issue").length;
   return (
@@ -398,9 +399,9 @@ function MaintenanceTab({ u }: { u: Unit360 }) {
         <KpiCard label="Work orders (all time)" value={u.workOrders.length} sublabel={`${u.workOrders.filter((w) => !w.isOpen).length} completed`} />
         <KpiCard label="Repeat issues" value={repeats} tone={repeats > 0 ? "warning" : "success"} sublabel={repeats > 0 ? "Same problem keeps coming back" : "None detected"} icon={Wrench} />
       </div>
-      <SectionCard title="Work orders" flush>
+      <SectionCard title="Work orders" action={<Button size="sm" variant="outline" onClick={() => createWorkOrder({ propertyId: u.property.id, unitId: u.unit.id, tenantId: u.tenant?.id ?? null, source: u.tenant ? "tenant" : "owner" })}>New work order</Button>} flush>
         <div className="p-3">
-          <DataTable rows={u.workOrders} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} dense emptyTitle="No work orders for this unit" exportName={`unit-${u.unit.unitNumber}-maintenance`} rowClassName={(r) => (r.workOrder.priority === "emergency" && r.isOpen ? "bg-critical-muted/30" : undefined)} />
+          <DataTable rows={u.workOrders} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} onRowClick={(r) => openWorkOrder(r.workOrder.id)} dense emptyTitle="No work orders for this unit" exportName={`unit-${u.unit.unitNumber}-maintenance`} rowClassName={(r) => (r.workOrder.priority === "emergency" && r.isOpen ? "bg-critical-muted/30" : undefined)} />
         </div>
       </SectionCard>
       {u.expenses.length > 0 && (

@@ -54,7 +54,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
   const { store } = useStoreContext();
   const router = useRouter();
   const params = useSearchParams();
-  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision } = useActions();
+  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder } = useActions();
   const t = useMemo(() => getTenant360(store, tenantId), [store, tenantId]);
   const [preview, setPreview] = useState<StoredDocument | null>(null);
 
@@ -303,9 +303,9 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
 
       {tab === "maintenance" && (
         <div className="space-y-6">
-          <SectionCard title="Maintenance requests" description={`${t.workOrders.length} on record · ${openWork} open`} flush>
+          <SectionCard title="Maintenance requests" description={`${t.workOrders.length} on record · ${openWork} open`} action={current ? <Button size="sm" variant="outline" onClick={() => createWorkOrder({ propertyId: current.property.id, unitId: current.unit.id, tenantId: tenant.id, source: "tenant" })}>New request</Button> : undefined} flush>
             <div className="p-3">
-              <DataTable rows={t.workOrders} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} dense emptyTitle="No maintenance requests" emptyIcon={Wrench} />
+              <DataTable rows={t.workOrders} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} onRowClick={(r) => openWorkOrder(r.workOrder.id)} dense emptyTitle="No maintenance requests" emptyIcon={Wrench} />
             </div>
           </SectionCard>
           <SectionCard title="Inspections" description="Move-in, move-out and annual visits">

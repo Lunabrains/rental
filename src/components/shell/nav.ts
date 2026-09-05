@@ -16,6 +16,7 @@ import {
   TrendingUp,
   Users,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 
@@ -57,6 +58,10 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/finance/utilities", label: "Utilities", icon: Gauge, match: startsWith("/finance/utilities") },
       { href: "/finance/charges", label: "Common charges", icon: Layers, match: startsWith("/finance/charges") },
     ],
+  },
+  {
+    label: "Maintenance",
+    items: [{ href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || p.startsWith("/maintenance/") }],
   },
   {
     label: "Analytics",

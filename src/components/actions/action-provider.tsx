@@ -10,13 +10,14 @@ import { ReminderDialog, type ReminderTarget } from "@/components/flows/reminder
 import { RenewalDecisionDialog } from "@/components/flows/renewal-decision-dialog";
 import { PaymentDetailDialog } from "@/components/payments/payment-detail-dialog";
 import { DepositDialog } from "@/components/finance/deposit-dialog";
+import { WorkOrderDialog, WorkOrderStatusDialog, type WorkOrderPrefill } from "@/components/maintenance/work-order-dialogs";
 import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
 import { RecordPaymentDialog } from "@/components/flows/record-payment-dialog";
 import { RenewContractDialog } from "@/components/flows/renew-contract-dialog";
 import { indexStore } from "@/lib/data/store";
 import { useStoreContext } from "@/lib/data/store-context";
-import type { AlertAction, ID, RenewalDecision } from "@/types";
+import type { AlertAction, ID, RenewalDecision, WorkOrderStatus } from "@/types";
 
 export type DrawerTab = "tenant" | "contract" | "payments" | "documents" | "activity";
 
@@ -31,6 +32,8 @@ type Flow =
   | { kind: "payment_detail"; paymentId: ID }
   | { kind: "expense"; expenseId?: ID; prefill?: ExpensePrefill }
   | { kind: "deposit"; depositId: ID }
+  | { kind: "work_order"; workOrderId?: ID; prefill?: WorkOrderPrefill }
+  | { kind: "work_order_status"; workOrderId: ID; initial?: WorkOrderStatus }
   | null;
 
 export interface ActionsContextValue {
@@ -51,6 +54,10 @@ export interface ActionsContextValue {
   addExpense: (prefill?: ExpensePrefill) => void;
   editExpense: (expenseId: ID) => void;
   openDeposit: (depositId: ID) => void;
+  createWorkOrder: (prefill?: WorkOrderPrefill) => void;
+  editWorkOrder: (workOrderId: ID) => void;
+  openWorkOrder: (workOrderId: ID) => void;
+  workOrderStatus: (workOrderId: ID, initial?: WorkOrderStatus) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -109,6 +116,10 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const addExpense = useCallback((prefill?: ExpensePrefill) => setFlow({ kind: "expense", prefill }), []);
   const editExpense = useCallback((expenseId: ID) => setFlow({ kind: "expense", expenseId }), []);
   const openDeposit = useCallback((depositId: ID) => setFlow({ kind: "deposit", depositId }), []);
+  const createWorkOrder = useCallback((prefill?: WorkOrderPrefill) => setFlow({ kind: "work_order", prefill }), []);
+  const editWorkOrder = useCallback((workOrderId: ID) => setFlow({ kind: "work_order", workOrderId }), []);
+  const openWorkOrder = useCallback((workOrderId: ID) => router.push(`/maintenance/${workOrderId}`), [router]);
+  const workOrderStatus = useCallback((workOrderId: ID, initial?: WorkOrderStatus) => setFlow({ kind: "work_order_status", workOrderId, initial }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -164,6 +175,21 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
         case "view_deposit":
         case "settle_deposit":
           return openDeposit(action.targetId);
+        case "view_work_order":
+          return openWorkOrder(action.targetId);
+        case "approve_work_order":
+          return workOrderStatus(action.targetId, "in_progress");
+        case "create_work_order": {
+          const i = indexStore(store);
+          const asset = i.assetById.get(action.targetId);
+          if (asset) return createWorkOrder({ propertyId: asset.propertyId, unitId: asset.unitId, assetId: asset.id, title: `${asset.name} — repair`, category: asset.assetType === "elevator" ? "elevator" : asset.assetType === "generator" ? "generator" : asset.assetType === "hvac" ? "hvac" : "other", priority: asset.status === "out_of_service" ? "emergency" : "high" });
+          const insp = i.inspectionById.get(action.targetId);
+          if (insp) {
+            const item = insp.items.find((x) => x.followUpRequired && !x.workOrderId);
+            return createWorkOrder({ propertyId: insp.propertyId, unitId: insp.unitId, assetId: insp.assetId, tenantId: insp.tenantId, inspectionId: insp.id, source: "inspection", title: item ? `${item.area} — ${item.item}` : "Inspection follow-up", description: item?.notes ?? undefined, category: "other" });
+          }
+          return createWorkOrder({});
+        }
         case "view_budget": {
           const b = indexStore(store).budgetById.get(action.targetId);
           return router.push(b ? `/finance/budgets?type=${b.periodType}&period=${b.period}&property=${b.propertyId}` : "/finance/budgets");
@@ -172,12 +198,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, router, store],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, router, store],
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -189,6 +215,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "add_tenant" && <AddTenantDialog key={flow.unitId} unitId={flow.unitId} onClose={closeFlow} />}
       {flow?.kind === "renewal_decision" && <RenewalDecisionDialog key={flow.contractId} contractId={flow.contractId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "contract_terms" && <ContractTermsDialog key={flow.contractId} contractId={flow.contractId} onClose={closeFlow} />}
+      {flow?.kind === "work_order" && <WorkOrderDialog key={flow.workOrderId ?? "new"} workOrderId={flow.workOrderId} prefill={flow.prefill} onClose={closeFlow} />}
+      {flow?.kind === "work_order_status" && <WorkOrderStatusDialog key={flow.workOrderId} workOrderId={flow.workOrderId} initial={flow.initial} onClose={closeFlow} />}
       {flow?.kind === "deposit" && <DepositDialog key={flow.depositId} depositId={flow.depositId} onClose={closeFlow} />}
       {flow?.kind === "expense" && <ExpenseDialog key={flow.expenseId ?? "new"} expenseId={flow.expenseId} prefill={flow.prefill} onClose={closeFlow} />}
       {flow?.kind === "payment_detail" && <PaymentDetailDialog key={flow.paymentId} paymentId={flow.paymentId} onClose={closeFlow} />}

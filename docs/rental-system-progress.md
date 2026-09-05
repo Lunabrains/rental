@@ -10,7 +10,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 4 — rent roll & payment intelligence
 - [x] Phase 5 — expenses & profitability
 - [x] Phase 6 — budgets, deposits, utilities, common charges
-- [ ] Phase 7 — maintenance work orders
+- [x] Phase 7 — maintenance work orders
 - [ ] Phase 8 — preventive maintenance & assets (QR)
 - [ ] Phase 9 — suppliers
 - [ ] Phase 10 — inspections, move-in/out, keys, parking
@@ -73,3 +73,11 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - Utilities (`/finance/utilities`): meters (building or unit level), readings with consumption and cost, decreasing readings refused unless a reset is declared, optional booking of the amount as a utility expense. Commands `addMeter`, `recordReading`.
 - Common charges (`/finance/charges`): create a charge for a month with a configurable allocation (equal / by area / by bedrooms), per-unit shares with paid toggles, collection progress. Commands `addCommonCharge`, `setAllocationPaid`, `deleteCommonCharge`.
 - Finance navigation now: Rent roll, Payments, Expenses, Budgets, Deposits, Utilities, Common charges. Tests in `tests/finance-ops.test.ts`.
+
+## Phase 7 — maintenance work orders
+- Work-order board (`/maintenance`, `work-orders-page.tsx`): table and Kanban views, filters for building, category, priority, supplier, status and "open too long", KPIs (open/emergency, awaiting approval, spend, repeat issues), exports.
+- Work-order detail (`/maintenance/[id]`, `work-order-page.tsx`): issue, building/unit/asset, supplier, quote and approval, estimated vs actual cost, status timeline, before/after photos, invoice attachment and linked expenses, related previous issues with "raise a permanent fix", audit trail, originating inspection / preventive plan.
+- Dialogs (`work-order-dialogs.tsx`): create/edit with supplier suggestions by category and approval flag from $500; status change with guarded transitions, completion cost, optional preventive-plan roll-forward. Commands in `src/lib/commands/maintenance.ts` (work orders, plans incl. `logService`, assets, suppliers) — audited and undoable.
+- Repeat-issue detection is rule-based in the alert engine (same unit/asset + category, N in the window) and surfaced on the board, the detail page and unit health.
+- Cross-links: building Maintenance tab, unit Maintenance tab and tenant Maintenance tab open details and create requests; alert actions (view / approve / create work order) wired.
+- Tests: `tests/maintenance.test.ts`.

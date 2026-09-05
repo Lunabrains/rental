@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/common/states";
 import { PriorityBadge, StatusBadge } from "@/components/common/status-badge";
 import { Timeline } from "@/components/common/timeline";
 import { DocumentPreview } from "@/components/documents/document-preview";
+import { Button } from "@/components/ui/button";
 import { DocumentRow } from "@/components/units/documents-tab";
 import { useStore } from "@/lib/data/store-context";
 import { formatDate, formatMoney, formatMoneyCompact, formatMonth, formatMonthShort, formatPercent, labelize } from "@/lib/format";
@@ -383,6 +384,7 @@ const planColumns: Column<PlanRow>[] = [
 
 export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
   const store = useStore();
+  const { openWorkOrder, createWorkOrder } = useActions();
   const summary = useMemo(() => getMaintenanceSummary(store, propertyId), [store, propertyId]);
   const open = useMemo(() => getWorkOrders(store, { propertyId, status: "open" }), [store, propertyId]);
   const history = useMemo(() => getWorkOrders(store, { propertyId, status: "closed_all" }), [store, propertyId]);
@@ -397,9 +399,9 @@ export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
         <KpiCard label="Avg resolution" value={summary.avgResolutionDays === null ? "—" : `${summary.avgResolutionDays}d`} sublabel={`${summary.completedLast30} completed in 30 days${summary.repeatIssues > 0 ? ` · ${summary.repeatIssues} repeat issue${summary.repeatIssues === 1 ? "" : "s"}` : ""}`} tone={summary.repeatIssues > 0 ? "warning" : "default"} />
       </div>
 
-      <SectionCard title="Open work orders" description={`${open.length} open`} flush>
+      <SectionCard title="Open work orders" description={`${open.length} open`} action={<Button size="sm" variant="outline" onClick={() => createWorkOrder({ propertyId })}>New work order</Button>} flush>
         <div className="p-3">
-          <DataTable rows={open} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} dense emptyTitle="No open work orders" emptyIcon={Wrench} rowClassName={(r) => (r.workOrder.priority === "emergency" ? "bg-critical-muted/30" : undefined)} />
+          <DataTable rows={open} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} onRowClick={(r) => openWorkOrder(r.workOrder.id)} dense emptyTitle="No open work orders" emptyIcon={Wrench} rowClassName={(r) => (r.workOrder.priority === "emergency" ? "bg-critical-muted/30" : undefined)} />
         </div>
       </SectionCard>
 
@@ -411,7 +413,7 @@ export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
 
       <SectionCard title="History" description={`${history.length} completed or closed`} flush>
         <div className="p-3">
-          <DataTable rows={history} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} dense pageSize={20} emptyTitle="No maintenance history" searchable={(r) => `${r.workOrder.title} ${r.workOrder.number} ${r.unit?.unitNumber ?? ""} ${r.supplier?.name ?? ""}`} exportName={`maintenance-${propertyId}`} />
+          <DataTable rows={history} columns={workOrderColumns} rowKey={(r) => r.workOrder.id} onRowClick={(r) => openWorkOrder(r.workOrder.id)} dense pageSize={20} emptyTitle="No maintenance history" searchable={(r) => `${r.workOrder.title} ${r.workOrder.number} ${r.unit?.unitNumber ?? ""} ${r.supplier?.name ?? ""}`} exportName={`maintenance-${propertyId}`} />
         </div>
       </SectionCard>
     </div>
