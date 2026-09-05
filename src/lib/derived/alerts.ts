@@ -1,6 +1,6 @@
 import { ids } from "@/lib/data/ids";
 import { indexStore } from "@/lib/data/store";
-import { addDaysISO, addPeriods, currentPeriod, daysBetween, daysSince, daysUntil, lastPeriods, nowISO, periodEnd, periodOf, previousPeriod } from "@/lib/date";
+import { addDaysISO, addPeriods, currentPeriod, daysBetween, daysSince, daysUntil, lastPeriods, nowISO, periodEnd, periodOf, previousPeriod, today } from "@/lib/date";
 import { formatMoney, formatMonth, formatPercent, labelize } from "@/lib/format";
 import type {
   Alert,
@@ -28,7 +28,7 @@ import { isOccupying, occupyingAt } from "./occupancy";
  * summarise these, never create them.
  */
 
-type Candidate = Omit<Alert, "createdAt" | "read" | "dismissed" | "resolved" | "resolvedAt">;
+type Candidate = Omit<Alert, "createdAt" | "read" | "dismissed" | "resolved" | "resolvedAt" | "snoozedUntil">;
 
 interface CandidateInput {
   type: AlertType;
@@ -1125,6 +1125,7 @@ export function computeAlerts(store: Store, base: ISODate): Alert[] {
       dismissed: p?.dismissed ?? false,
       resolved: p?.resolved ?? false,
       resolvedAt: p?.resolvedAt ?? null,
+      snoozedUntil: p?.snoozedUntil && p.snoozedUntil > today() ? p.snoozedUntil : null,
     });
   }
   return merged;

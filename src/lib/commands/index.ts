@@ -1,6 +1,8 @@
 import { applyImport, summarize } from "@/lib/import/apply";
 import type { ImportPlan, ImportSummary } from "@/lib/import/types";
-import type { AlertThresholds } from "@/types";
+import { today } from "@/lib/date";
+import { recompute } from "@/lib/derived/recompute";
+import type { AlertThresholds, AlertType } from "@/types";
 
 import { finish, logActivity, type Command } from "./core";
 
@@ -52,6 +54,41 @@ export function dismissAlert(alertId: string): Command {
     result: undefined,
     undo: (s) => ({ ...s, alerts: s.alerts.map((a) => (a.id === alertId ? { ...a, dismissed: false } : a)) }),
   });
+}
+
+export function snoozeAlert(alertId: string, until: string): Command {
+  return (store) => {
+    const prev = store.alerts.find((a) => a.id === alertId);
+    if (!prev) throw new Error("Alert not found");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(until) || until <= today()) throw new Error("Pick a date in the future");
+    return {
+      store: { ...store, alerts: store.alerts.map((a) => (a.id === alertId ? { ...a, snoozedUntil: until, read: true } : a)) },
+      result: undefined,
+      undo: (s) => ({ ...s, alerts: s.alerts.map((a) => (a.id === alertId ? { ...a, snoozedUntil: prev.snoozedUntil } : a)) }),
+    };
+  };
+}
+
+export function unsnoozeAlert(alertId: string): Command {
+  return (store) => {
+    const prev = store.alerts.find((a) => a.id === alertId);
+    if (!prev) throw new Error("Alert not found");
+    return {
+      store: { ...store, alerts: store.alerts.map((a) => (a.id === alertId ? { ...a, snoozedUntil: null } : a)) },
+      result: undefined,
+      undo: (s) => ({ ...s, alerts: s.alerts.map((a) => (a.id === alertId ? { ...a, snoozedUntil: prev.snoozedUntil } : a)) }),
+    };
+  };
+}
+
+/** Mute or enable one rule; alerts recompute immediately. */
+export function setAlertTypeMuted(type: AlertType, muted: boolean): Command {
+  return (store) => {
+    const prevMuted = store.settings.mutedAlertTypes;
+    const next = muted ? Array.from(new Set([...prevMuted, type])) : prevMuted.filter((t) => t !== type);
+    if (next.length === prevMuted.length && next.every((t, i) => t === prevMuted[i])) return { store, result: undefined };
+    return finish({ ...store, settings: { ...store.settings, mutedAlertTypes: next } }, undefined, (s) => recompute({ ...s, settings: { ...s.settings, mutedAlertTypes: prevMuted } }));
+  };
 }
 
 /* ------------------------------- Settings --------------------------------- */

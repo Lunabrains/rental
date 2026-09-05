@@ -152,12 +152,32 @@ export function getVacantUnits(store: Store, minDays = 0, propertyId?: ID): Vaca
 
 /* --------------------------------- Alerts --------------------------------- */
 
+export type AlertStatusFilter = "open" | "snoozed" | "resolved" | "dismissed" | "all";
+
 export interface AlertFilter {
   severity?: AlertSeverity;
   category?: AlertCategory;
   propertyId?: ID;
   unreadOnly?: boolean;
   includeDismissed?: boolean;
+  /** Default `open`: not dismissed, not resolved, not snoozed. */
+  status?: AlertStatusFilter;
+}
+
+function matchesStatus(a: Alert, status: AlertStatusFilter, includeDismissed: boolean): boolean {
+  const snoozed = a.snoozedUntil !== null && a.snoozedUntil > today();
+  switch (status) {
+    case "all":
+      return includeDismissed || !a.dismissed;
+    case "snoozed":
+      return snoozed && !a.dismissed;
+    case "resolved":
+      return a.resolved && !a.dismissed;
+    case "dismissed":
+      return a.dismissed;
+    default:
+      return !a.dismissed && !a.resolved && !snoozed;
+  }
 }
 
 const SEVERITY_RANK: Record<AlertSeverity, number> = { critical: 0, warning: 1, attention: 2, info: 3 };
@@ -166,7 +186,7 @@ export function getAlerts(store: Store, filter: AlertFilter = {}): Alert[] {
   return store.alerts
     .filter(
       (a) =>
-        (filter.includeDismissed || !a.dismissed) &&
+        matchesStatus(a, filter.status ?? "open", filter.includeDismissed ?? false) &&
         (!filter.severity || a.severity === filter.severity) &&
         (!filter.category || a.category === filter.category) &&
         (!filter.propertyId || a.propertyId === filter.propertyId) &&

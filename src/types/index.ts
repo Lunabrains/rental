@@ -947,6 +947,8 @@ export interface Alert {
   /** Owner marked it handled; it stays hidden until the condition changes. */
   resolved: boolean;
   resolvedAt: ISODateTime | null;
+  /** Hidden from the open list until this date (owner snoozed it). */
+  snoozedUntil: ISODate | null;
 }
 
 /* -------------------------------------------------------------------------- */

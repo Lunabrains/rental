@@ -15,7 +15,7 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - [x] Phase 9 — suppliers
 - [x] Phase 10 — inspections, move-in/out, keys, parking
 - [x] Phase 11 — renovations / CapEx
-- [ ] Phase 12 — smart alerts engine
+- [x] Phase 12 — smart alerts engine
 - [ ] Phase 13 — cash flow & forecasting
 - [ ] Phase 14 — daily owner briefing
 - [ ] Phase 15 — AI document intelligence
@@ -114,3 +114,11 @@ Validation after each phase: `npx tsc --noEmit` · `npm run lint` · `npm test` 
 - UI: `/renovations` (KPIs, by-building table, status chips, project table with progress bars and variance), `/renovations/[id]` (budget vs spent, progress, schedule, return; tasks checklist; CapEx expenses with "Book cost"; unit impact card; contractor; before / after photos; history; Start / Hold / Resume / Complete / Cancel). Dialogs in `renovation-dialogs.tsx`.
 - Cross-links: unit Maintenance tab lists projects and offers "Plan renovation"; building overview links live projects; alert action `view_renovation` wired. Nav: Operations › Renovations.
 - Tests: `tests/renovations.test.ts`.
+
+## Phase 12 — smart alerts engine
+- Rule book (`src/lib/derived/alert-catalog.ts`): every `AlertType` has a label, plain-language description, category, severity and the thresholds that drive it (`ALERT_RULES`); every threshold has a label, hint and unit (`THRESHOLD_FIELDS`). A test asserts the catalog matches the engine (categories emitted, thresholds present).
+- Engine additions: alerts carry `snoozedUntil`; snoozes survive recompute and drop once the date passes; muted rules are skipped (`mutedAlertTypes`). `getAlerts` takes a `status` filter — open (default: not dismissed, resolved or snoozed), snoozed, resolved, dismissed, all.
+- Commands: `snoozeAlert`, `unsnoozeAlert`, `setAlertTypeMuted` (recomputes immediately, undoable), plus the existing `resolveAlert`, `dismissAlert`, `markAlertRead`.
+- UI: `/alerts` has status chips, a rule filter (`?type=`), Resolve / Reopen, Snooze (tomorrow / week / month), Wake, Dismiss, and a link to `/alerts/rules`; `/alerts/rules` lists every rule by category with open counts (linking to the filtered list), inline threshold editing with an Apply bar, and a mute switch per rule. Settings now summarises the rules and links there.
+- Demo verification (`tests/alerts.test.ts`): the seed raises the scripted situations (Karim overdue and expiring, Michel repeat late, B304 vacant, generator emergency, repeat plumbing, overdue service, over-budget line and lobby project, failed inspection item, unsettled deposit, overdue invoice); alert ids stay stable and clear when the condition clears; muting, snoozing and threshold changes recompute as expected.
+- No external notifications: the plan's "notification rules" are the in-app rule switches and thresholds; nothing leaves the app.
