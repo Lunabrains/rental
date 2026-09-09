@@ -21,6 +21,7 @@ import { ALERT_RULES } from "@/lib/derived/alert-catalog";
 import { formatDate, labelize } from "@/lib/format";
 import { getAlerts, type AlertStatusFilter } from "@/lib/queries";
 import { ALERT_CATEGORIES, ALERT_SEVERITIES, type Alert, type AlertCategory, type AlertSeverity, type AlertType } from "@/types";
+import { alertTypeVisible } from "@/lib/features";
 
 type SeverityFilter = "all" | AlertSeverity;
 type CategoryFilter = "all" | AlertCategory;
@@ -128,7 +129,7 @@ export function AlertsPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All categories</SelectItem>
-            {ALERT_CATEGORIES.map((c) => (
+            {ALERT_CATEGORIES.filter((c) => Object.values(ALERT_RULES).some((r) => r.category === c && alertTypeVisible(r.type))).map((c) => (
               <SelectItem key={c} value={c}>
                 {labelize(c)}
               </SelectItem>

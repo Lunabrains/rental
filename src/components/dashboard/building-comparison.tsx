@@ -10,6 +10,7 @@ import { buildingHealth } from "@/lib/derived/metrics";
 import { formatMoney, formatPercent } from "@/lib/format";
 import type { PortfolioComparison } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { featureOn } from "@/lib/features";
 
 /** Portfolio performance (plan §10): one row per building — occupancy, collection, NOI, outstanding, health. */
 export function BuildingComparison({ comparison, lowOccupancyThreshold }: { comparison: PortfolioComparison; lowOccupancyThreshold: number }) {
@@ -22,9 +23,11 @@ export function BuildingComparison({ comparison, lowOccupancyThreshold }: { comp
       title="Building comparison"
       description={`${comparison.label} · sorted by NOI per unit per month`}
       action={
-        <Link href="/analytics/performance" className="text-xs font-medium text-brand hover:underline">
-          Full comparison
-        </Link>
+        featureOn("analytics") ? (
+          <Link href="/analytics/performance" className="text-xs font-medium text-brand hover:underline">
+            Full comparison
+          </Link>
+        ) : undefined
       }
       flush
     >

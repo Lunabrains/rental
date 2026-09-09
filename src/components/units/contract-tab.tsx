@@ -11,6 +11,7 @@ import { formatDate, formatMoney, labelize, ordinal } from "@/lib/format";
 import type { UnitDetails } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
+import { featureOn } from "@/lib/features";
 
 export function ContractTab({ details, onPreview }: { details: UnitDetails; onPreview: (doc: StoredDocument) => void }) {
   const { renewContract, markAsLeaving, editContractTerms, renewalDecision } = useActions();
@@ -61,6 +62,7 @@ export function ContractTab({ details, onPreview }: { details: UnitDetails; onPr
         <Field label="Move-out">{c.moveOutDate ? formatDate(c.moveOutDate) : "—"}</Field>
       </dl>
 
+      {featureOn("documents") && (
       <div>
         <div className="text-[11px] uppercase tracking-wide text-muted-foreground">Signed contract</div>
         {contractDoc ? (
@@ -84,6 +86,7 @@ export function ContractTab({ details, onPreview }: { details: UnitDetails; onPr
           <p className="mt-1.5 rounded-md border border-dashed p-3 text-xs text-muted-foreground">No signed copy uploaded yet.</p>
         )}
       </div>
+      )}
 
       {previous.length > 0 && (
         <div>

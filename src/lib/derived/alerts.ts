@@ -19,6 +19,7 @@ import type {
 
 import { budgetActual, budgetVariance, expensesFor, isOpenWorkOrder, isUnpaid, maintenanceSpend, noiFor, outstandingRent, sum } from "./metrics";
 import { isOccupying, occupyingAt } from "./occupancy";
+import { actionVisible, featureOn, hiddenAlertTypes } from "@/lib/features";
 
 /**
  * Alert engine — deterministic business rules computed from the store on each
@@ -678,7 +679,7 @@ export function computeAlertSets(store: Store, base: ISODate): { alerts: Alert[]
           entityType: "asset",
           entityId: asset.id,
           title: `${asset.name} out of service — ${propertyName(asset.propertyId)}`,
-          message: `${labelize(asset.assetType)}${open ? ` · work order ${open.number} ${labelize(open.status)}` : " · no open work order"}`,
+          message: `${labelize(asset.assetType)}${!featureOn("maintenance") ? "" : open ? ` · work order ${open.number} ${labelize(open.status)}` : " · no open work order"}`,
           actions: open ? [act("view_work_order", "Open work order", open.id), act("view_asset", "View asset", asset.id)] : [act("create_work_order", "Create work order", asset.id), act("view_asset", "View asset", asset.id)],
           weight: (critical ? 5_000 : 1_500) + (open ? 0 : 1_000),
           ...link,
@@ -1114,7 +1115,8 @@ export function computeAlertSets(store: Store, base: ISODate): { alerts: Alert[]
 
   /* ------------------------------- Merge -------------------------------- */
 
-  const muted = new Set(store.settings.mutedAlertTypes);
+  // Rules of sections that are switched off in this edition are parked like muted ones.
+  const muted = new Set([...store.settings.mutedAlertTypes, ...hiddenAlertTypes()]);
   const previous = new Map<string, Alert>([...(store.mutedAlerts ?? []), ...store.alerts].map((a) => [a.id, a]));
   const now = nowISO();
   const seen = new Set<string>();
@@ -1126,6 +1128,7 @@ export function computeAlertSets(store: Store, base: ISODate): { alerts: Alert[]
     const p = previous.get(c.id);
     (muted.has(c.type) ? parked : merged).push({
       ...c,
+      actions: c.actions.filter((a) => actionVisible(a.kind)),
       createdAt: p?.createdAt ?? now,
       read: p?.read ?? false,
       dismissed: p?.dismissed ?? false,

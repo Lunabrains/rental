@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { createEmptyStore } from "../src/lib/data/store";
 import { setTodayOverride } from "../src/lib/date";
+import { setHiddenFeatures } from "../src/lib/features";
 import { importData } from "../src/lib/commands";
 import { parseWorkbook } from "../src/lib/import/parse";
 import { planImport } from "../src/lib/import/validate";
@@ -24,6 +25,8 @@ import type {
 
 /** Every test runs on the same calendar day. */
 export const TODAY = "2026-09-05";
+// The engine tests exercise every section; the shipped edition switches some off (src/lib/features.ts).
+setHiddenFeatures([]);
 setTodayOverride(TODAY);
 
 export function property(over: Partial<Property> = {}): Property {

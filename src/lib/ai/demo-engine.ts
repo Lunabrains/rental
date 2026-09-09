@@ -26,6 +26,7 @@ import { answerV2 } from "./answers-v2";
 import { entryIntent } from "./entry-intents";
 import { answerScripted, localizeActionLabel, matchScripted, suggestedQuestions } from "./scripted";
 import type { AnswerAction, AssistantAnswer, PageContext } from "./types";
+import { hiddenTopicIn } from "@/lib/features";
 
 /**
  * The demo brain: a rule-based intent router over the query layer. It
@@ -512,7 +513,8 @@ function helpAnswer(lang: Lang): AssistantAnswer {
     source: "local",
     lang,
     text: s.helpText,
-    cards: [{ title: s.helpTitle, fields: s.help }],
+    // Drop the examples that belong to sections switched off in this edition.
+    cards: [{ title: s.helpTitle, fields: s.help.map(([k, v]): [string, string] => [k, v.split(/[,،] /).filter((part) => !hiddenTopicIn(normalizeQuestion(part))).join(", ")]) }],
     suggestions: suggestedQuestions(lang).map((q) => q.text),
   };
 }
@@ -551,6 +553,9 @@ export function answerLocally(question: string, store: Store, context: PageConte
   // Data entry by instruction ("add a new building called…") opens a prefilled form — the assistant never writes on its own.
   const entry = entryIntent(english, q, store, { property: namedScope ?? e.property, tenant: e.tenant }, lang);
   if (entry) return entry;
+
+  // Sections switched off in this edition get a friendly no rather than an answer about a screen that is not there.
+  if (hiddenTopicIn(q)) return { source: "local", lang, text: s.featureOff, suggestions: suggestedQuestions(lang).slice(0, 3).map((x) => x.text) };
 
   // Second-generation intents (finance, maintenance, suppliers, forecast, briefing, safe actions) go first — they are more specific.
   const v2 = answerV2(q, store, scoped, { property: e.property, propertyNamed: e.propertyNamed, tenant: e.tenant, unitNumber: e.unitNumber, days: e.days }, lang);

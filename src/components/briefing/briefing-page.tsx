@@ -13,6 +13,7 @@ import { useStore } from "@/lib/data/store-context";
 import { briefingAsText, getDailyBriefing, type BriefingItem, type BriefingTone } from "@/lib/derived/briefing";
 import { formatDate, formatMoney, formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { visibleHref } from "@/lib/features";
 
 const DOT: Record<BriefingTone, string> = { critical: "bg-critical", warning: "bg-warning", attention: "bg-info", info: "bg-muted-foreground/50", success: "bg-success", neutral: "bg-muted-foreground/40" };
 
@@ -61,7 +62,7 @@ export function BriefingPage() {
         <KpiCard label="Collected this month" value={formatMoney(b.numbers.collectedThisMonth)} sublabel={`of ${formatMoney(b.numbers.dueThisMonth)} due · ${formatPercent(b.numbers.collectionRate)}`} tone={b.numbers.collectionRate >= 0.9 ? "success" : b.numbers.collectionRate >= 0.7 ? "warning" : "critical"} href="/finance/rent-roll" />
         <KpiCard label="Outstanding" value={formatMoney(b.numbers.outstanding)} sublabel="Across all tenants" tone={b.numbers.outstanding > store.settings.thresholds.outstandingWarning ? "critical" : "default"} href="/payments?status=overdue" />
         <KpiCard label="Occupancy" value={formatPercent(b.numbers.occupancy)} sublabel={`${b.numbers.criticalAlerts} critical alert${b.numbers.criticalAlerts === 1 ? "" : "s"}`} href="/alerts?severity=critical" />
-        <KpiCard label="Next 30 days" value={`${b.numbers.net30 >= 0 ? "+" : ""}${formatMoney(b.numbers.net30)}`} sublabel="Net cash movement, estimated" tone={b.numbers.net30 >= 0 ? "success" : "critical"} href="/finance/cash-flow" />
+        <KpiCard label="Next 30 days" value={`${b.numbers.net30 >= 0 ? "+" : ""}${formatMoney(b.numbers.net30)}`} sublabel="Net cash movement, estimated" tone={b.numbers.net30 >= 0 ? "success" : "critical"} href={visibleHref("/finance/cash-flow")} />
       </div>
 
       {total === 0 && (

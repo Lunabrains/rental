@@ -1,6 +1,7 @@
 import { ActionsProvider } from "@/components/actions/action-provider";
 import { AssistantProvider } from "@/components/ai/assistant-provider";
 import { AppShell } from "@/components/shell/app-shell";
+import { FeatureGate } from "@/components/shell/feature-gate";
 import { StoreProvider } from "@/lib/data/store-context";
 
 /**
@@ -14,7 +15,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <StoreProvider>
       <ActionsProvider>
         <AssistantProvider>
-          <AppShell>{children}</AppShell>
+          <AppShell>
+            <FeatureGate>{children}</FeatureGate>
+          </AppShell>
         </AssistantProvider>
       </ActionsProvider>
     </StoreProvider>

@@ -17,6 +17,7 @@ import { useStoreContext } from "@/lib/data/store-context";
 import { ALERT_TYPES, CATEGORY_LABELS, rulesByCategory, thresholdField, type ThresholdKey } from "@/lib/derived/alert-catalog";
 import { cn } from "@/lib/utils";
 import type { AlertThresholds, AlertType } from "@/types";
+import { alertTypeVisible } from "@/lib/features";
 
 /** Alert rules (plan §Phase 12): every rule the engine runs, its thresholds, what it is raising right now, and a mute switch. */
 export function AlertRulesPage() {
@@ -24,7 +25,7 @@ export function AlertRulesPage() {
   const [draft, setDraft] = useState<AlertThresholds>(store.settings.thresholds);
   const dirtyKeys = (Object.keys(draft) as ThresholdKey[]).filter((k) => draft[k] !== store.settings.thresholds[k]);
   const muted = new Set(store.settings.mutedAlertTypes);
-  const groups = useMemo(() => rulesByCategory(), []);
+  const groups = useMemo(() => rulesByCategory().map((g) => ({ ...g, rules: g.rules.filter((r) => alertTypeVisible(r.type)) })).filter((g) => g.rules.length > 0), []);
   const counts = useMemo(() => {
     const c = new Map<AlertType, { open: number; critical: number }>();
     for (const a of store.alerts) {

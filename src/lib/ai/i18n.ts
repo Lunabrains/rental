@@ -160,6 +160,7 @@ export const en = {
   /* ---- demo brain ---- */
   greeting: (owner: string, critical: number, outstanding: string, occ: string) => `Hello ${owner}. ${critical} critical item${critical === 1 ? "" : "s"} today, ${outstanding} outstanding, ${occ} occupied. What would you like to look at?`,
   thanks: "Anytime. Tell me what to look at next.",
+  featureOff: "That part is not in this edition. I can help with buildings, units, tenants, contracts, rent, payments, expenses, assets and alerts.",
   helpText: "Ask me about anything in the portfolio — I read the same data as the screens.",
   helpTitle: "Things I can answer",
   help: [
@@ -454,6 +455,7 @@ export const ar: Strings = {
 
   greeting: (owner, critical, outstanding, occ) => `أهلاً ${owner}. ${critical} ${n(critical, "بند حرج", "بندان حرجان", "بنود حرجة", "بند حرج")} اليوم، ${outstanding} متأخرة، الإشغال ${occ}. ماذا تريد أن ترى؟`,
   thanks: "على الرحب. قل لي ماذا تريد أن ترى بعد.",
+  featureOff: "هذا الجزء غير موجود في هذه النسخة. أستطيع مساعدتك في المباني والشقق والمستأجرين والعقود والإيجار والمدفوعات والمصاريف والأصول والتنبيهات.",
   helpText: "اسألني عن أي شيء في المحفظة — أقرأ نفس البيانات التي تراها على الشاشات.",
   helpTitle: "ما يمكنني الإجابة عنه",
   help: [

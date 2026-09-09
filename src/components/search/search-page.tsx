@@ -13,6 +13,7 @@ import { EmptyState } from "@/components/common/states";
 import { useStore } from "@/lib/data/store-context";
 import { initials } from "@/lib/format";
 import { searchAll } from "@/lib/queries";
+import { featureOn } from "@/lib/features";
 
 export function SearchPage() {
   const store = useStore();
@@ -117,7 +118,7 @@ export function SearchPage() {
               </ul>
             </SectionCard>
           )}
-          {results.suppliers.length > 0 && (
+          {featureOn("suppliers") && results.suppliers.length > 0 && (
             <SectionCard title="Suppliers" description={`${results.suppliers.length}`} flush>
               <ul className="divide-y">
                 {results.suppliers.map((s) => (
@@ -134,7 +135,7 @@ export function SearchPage() {
               </ul>
             </SectionCard>
           )}
-          {results.workOrders.length > 0 && (
+          {featureOn("maintenance") && results.workOrders.length > 0 && (
             <SectionCard title="Work orders" description={`${results.workOrders.length}`} flush>
               <ul className="divide-y">
                 {results.workOrders.map(({ workOrder, property, unit }) => (
@@ -168,7 +169,7 @@ export function SearchPage() {
               </ul>
             </SectionCard>
           )}
-          {results.documents.length > 0 && (
+          {featureOn("documents") && results.documents.length > 0 && (
             <SectionCard title="Documents" description={`${results.documents.length}`} flush>
               <ul className="divide-y">
                 {results.documents.map(({ document, owner }) => (

@@ -4,7 +4,7 @@ import type { Store } from "@/types";
 import { answerLocally, unknownAnswer } from "./demo-engine";
 import { detectLang, strings, type Lang } from "./i18n";
 import { buildSystemPrompt } from "./system-prompt";
-import { executeTool, knownActionTarget, TOOL_DEFINITIONS } from "./tools";
+import { availableTools, executeTool, knownActionTarget } from "./tools";
 import type { AiRequest, AiResponse, AnswerAction, ApiMessage, AssistantAnswer, ChatTurn, ContentBlock, PageContext, ToolUseBlock } from "./types";
 
 const MAX_ROUNDS = 6;
@@ -46,7 +46,7 @@ export async function askAssistant(opts: AskOptions): Promise<AssistantAnswer> {
 
   for (let round = 0; round < MAX_ROUNDS; round++) {
     opts.onStatus?.(round === 0 ? (lang === "ar" ? "أفكر…" : "Thinking…") : lang === "ar" ? "أبحث…" : "Looking things up…");
-    const res = await callApi({ system, messages, tools: TOOL_DEFINITIONS });
+    const res = await callApi({ system, messages, tools: availableTools() });
     if (!res.ok) {
       if (res.error === "no_credentials") modelAvailable = false;
       return res.error === "no_credentials" ? unknownAnswer(question, lang) : fallbackAnswer(res.error, res.message, question, lang);

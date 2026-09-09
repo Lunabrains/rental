@@ -32,19 +32,21 @@ import { formatDate, formatMoney, formatMonth as formatMonthLabel, formatPercent
 import { getUnit360, getUnitProfitability, type InspectionRow, type MeterRow, type ProfitabilityWindow, type TimelineEvent, type Unit360 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 type Tab = "overview" | "tenancy" | "payments" | "profitability" | "maintenance" | "inspections" | "utilities" | "documents" | "history";
-const TABS: { key: Tab; label: string }[] = [
+const ALL_TABS: { key: Tab; label: string; feature?: FeatureKey }[] = [
   { key: "overview", label: "Overview" },
   { key: "tenancy", label: "Tenant & contract" },
   { key: "payments", label: "Payments" },
   { key: "profitability", label: "Profitability" },
-  { key: "maintenance", label: "Maintenance" },
-  { key: "inspections", label: "Inspections" },
-  { key: "utilities", label: "Utilities" },
-  { key: "documents", label: "Documents" },
+  { key: "maintenance", label: "Maintenance", feature: "maintenance" },
+  { key: "inspections", label: "Inspections", feature: "inspections" },
+  { key: "utilities", label: "Utilities", feature: "utilities" },
+  { key: "documents", label: "Documents", feature: "documents" },
   { key: "history", label: "History" },
 ];
+const TABS = ALL_TABS.filter((t) => !t.feature || featureOn(t.feature));
 
 /**
  * Unit 360°: everything about one apartment on a full page — the plan's
@@ -148,7 +150,9 @@ export function UnitPage({ unitId }: { unitId: string }) {
           value={u.reliability?.score === null || u.reliability === null ? "—" : <ScoreBadge score={u.reliability.score} label="Payment reliability" components={u.reliability.components} scale={1} caption="Internal indicator from this ledger only — not a credit score." size="lg" />}
           sublabel={u.reliability ? `${u.reliability.label} · ${formatPercent(u.totals.onTimeRate)} on time` : "No tenant"}
         />
-        <KpiCard label="Maintenance YTD" value={formatMoney(u.maintenanceYtd)} sublabel={`${formatMoney(u.maintenanceLast12)} in the last 12 months · ${u.workOrders.filter((w) => w.isOpen).length} open`} tone={u.workOrders.some((w) => w.isOpen && w.workOrder.priority === "emergency") ? "critical" : "default"} />
+        {featureOn("maintenance") && (
+<KpiCard label="Maintenance YTD" value={formatMoney(u.maintenanceYtd)} sublabel={`${formatMoney(u.maintenanceLast12)} in the last 12 months · ${u.workOrders.filter((w) => w.isOpen).length} open`} tone={u.workOrders.some((w) => w.isOpen && w.workOrder.priority === "emergency") ? "critical" : "default"} />
+)}
         <KpiCard label="Vacancy" value={u.daysVacant !== null ? `${u.daysVacant} days` : "Occupied"} sublabel={u.daysVacant !== null ? `Est. ${formatMoney(u.reference.loss)} lost (${u.reference.source.replace("_", " ")})` : `${u.vacancyHistory.length} past vacancy spell${u.vacancyHistory.length === 1 ? "" : "s"}`} tone={u.daysVacant !== null && u.daysVacant > store.settings.thresholds.vacantWarningDays ? "warning" : "default"} />
         <KpiCard label="Alerts" value={unitAlerts.length} sublabel={unitAlerts.length > 0 ? unitAlerts[0].title.split(" — ")[0] : "Nothing open"} tone={unitAlerts.some((a) => a.severity === "critical") ? "critical" : unitAlerts.length > 0 ? "warning" : "success"} />
       </div>
@@ -308,7 +312,8 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
             <p className="text-sm text-muted-foreground">A deposit record is created with each contract.</p>
           )}
         </SectionCard>
-        <SectionCard title="Keys & parking">
+        {(featureOn("keys") || featureOn("parking")) && (
+<SectionCard title="Keys & parking">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
             <Field label="Keys issued">{u.keys.filter((k) => k.key.status === "issued").length > 0 ? u.keys.filter((k) => k.key.status === "issued").map((k) => labelize(k.key.type)).join(", ") : "None"}</Field>
             <Field label="Keys in office">{u.keys.filter((k) => k.key.status === "in_office").length || "—"}</Field>
@@ -316,8 +321,12 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
             <Field label="Lost keys">{u.keys.filter((k) => k.key.status === "lost").length || "—"}</Field>
           </dl>
           <div className="mt-3 flex gap-2">
-            <Button asChild size="sm" variant="outline"><Link href={`/keys?property=${u.property.id}&unit=${u.unit.id}`}>Keys</Link></Button>
-            <Button asChild size="sm" variant="outline"><Link href={`/parking?property=${u.property.id}&unit=${u.unit.id}`}>Parking</Link></Button>
+            {featureOn("keys") && (
+<Button asChild size="sm" variant="outline"><Link href={`/keys?property=${u.property.id}&unit=${u.unit.id}`}>Keys</Link></Button>
+)}
+            {featureOn("parking") && (
+<Button asChild size="sm" variant="outline"><Link href={`/parking?property=${u.property.id}&unit=${u.unit.id}`}>Parking</Link></Button>
+)}
           </div>
           {u.keys.some((k) => k.key.status === "lost") && (
             <p className="mt-2 flex items-center gap-1 text-xs text-warning-foreground">
@@ -325,6 +334,7 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
             </p>
           )}
         </SectionCard>
+)}
       </div>
     </div>
   );

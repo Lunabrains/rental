@@ -18,17 +18,19 @@ import { useStore } from "@/lib/data/store-context";
 import { buildingHealth } from "@/lib/derived/metrics";
 import { getPropertyDetails, getUnitsByProperty } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 type View = "overview" | "units" | "financials" | "maintenance" | "assets" | "documents" | "timeline";
-const VIEWS: { key: View; label: string }[] = [
+const ALL_VIEWS: { key: View; label: string; feature?: FeatureKey }[] = [
   { key: "overview", label: "Overview" },
   { key: "units", label: "Units" },
   { key: "financials", label: "Financials" },
-  { key: "maintenance", label: "Maintenance" },
+  { key: "maintenance", label: "Maintenance", feature: "maintenance" },
   { key: "assets", label: "Assets" },
-  { key: "documents", label: "Documents" },
+  { key: "documents", label: "Documents", feature: "documents" },
   { key: "timeline", label: "Timeline" },
 ];
+const VIEWS = ALL_VIEWS.filter((v) => !v.feature || featureOn(v.feature));
 
 function matches(query: string, unitNumber: string, tenantName: string | null, phone: string | null): boolean {
   const q = query.trim().toLowerCase();

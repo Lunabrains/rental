@@ -34,17 +34,19 @@ import { formatDate, formatMoney, formatMonth, formatPercent, initials, labelize
 import { getTenant360, type ContractRow, type Tenant360 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { Payment, StoredDocument } from "@/types";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 type Tab = "overview" | "payments" | "contracts" | "maintenance" | "documents" | "notes" | "timeline";
-const TABS: { key: Tab; label: string }[] = [
+const ALL_TABS: { key: Tab; label: string; feature?: FeatureKey }[] = [
   { key: "overview", label: "Overview" },
   { key: "payments", label: "Payments" },
   { key: "contracts", label: "Contracts" },
-  { key: "maintenance", label: "Maintenance" },
-  { key: "documents", label: "Documents" },
+  { key: "maintenance", label: "Maintenance", feature: "maintenance" },
+  { key: "documents", label: "Documents", feature: "documents" },
   { key: "notes", label: "Notes & reminders" },
   { key: "timeline", label: "Timeline" },
 ];
+const TABS = ALL_TABS.filter((t) => !t.feature || featureOn(t.feature));
 
 /**
  * Tenant 360° (plan §Phase 3): contact, tenancy, money, reliability, history,
@@ -159,7 +161,9 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
         <KpiCard label="Late payments" value={`${totals.lateCount}×`} tone={totals.lateCount >= 3 ? "critical" : totals.lateCount > 0 ? "warning" : "success"} sublabel={totals.avgDaysLate > 0 ? `avg ${totals.avgDaysLate} days late` : "Never late"} />
         <KpiCard label="Reliability" value={reliability.score === null ? "—" : <ScoreBadge score={reliability.score} label={`Payment reliability · ${reliability.label}`} components={reliability.components} scale={1} caption="Internal indicator from this ledger only — not a credit score." size="lg" />} sublabel={`${reliability.label} · ${formatPercent(totals.onTimeRate)} on time`} />
         <KpiCard label="Deposit held" value={heldDeposit > 0 ? formatMoney(heldDeposit) : "—"} sublabel={t.deposits.length > 0 ? labelize(t.deposits[0].deposit.status) : "No deposit on record"} />
-        <KpiCard label="Maintenance" value={t.workOrders.length} tone={openWork > 0 ? "warning" : "default"} sublabel={openWork > 0 ? `${openWork} open request${openWork === 1 ? "" : "s"}` : "No open requests"} icon={Wrench} />
+        {featureOn("maintenance") && (
+<KpiCard label="Maintenance" value={t.workOrders.length} tone={openWork > 0 ? "warning" : "default"} sublabel={openWork > 0 ? `${openWork} open request${openWork === 1 ? "" : "s"}` : "No open requests"} icon={Wrench} />
+)}
       </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
@@ -216,7 +220,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
                   <Button size="sm" variant="outline" onClick={() => renewalDecision(current.contract.id)}>
                     <Check className="size-3.5" /> Renewal decision
                   </Button>
-                  {(() => {
+                  {featureOn("inspections") && (() => {
                     const moveOut = store.inspections.find((i) => i.contractId === current.contract.id && i.type === "move_out" && i.status !== "cancelled");
                     return moveOut ? (
                       <Button size="sm" variant="outline" onClick={() => openInspection(moveOut.id)}>Move-out checklist · {labelize(moveOut.status)}</Button>
@@ -258,6 +262,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
                 <Field label="Emergency phone">{tenant.emergencyContactPhone}</Field>
               </dl>
             </SectionCard>
+            {(featureOn("deposits") || featureOn("keys") || featureOn("parking")) && (
             <SectionCard title="Deposits, keys & parking">
               <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
                 {t.deposits.slice(0, 2).map((d) => (
@@ -269,6 +274,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
                 <Field label="Parking">{t.parking.length > 0 ? t.parking.map((p) => `${p.space.spaceNumber}${p.space.vehiclePlate ? ` · ${p.space.vehiclePlate}` : ""}${p.space.paid ? ` · ${formatMoney(p.space.monthlyFee)}/mo` : ""}`).join(", ") : "None"}</Field>
               </dl>
             </SectionCard>
+            )}
           </div>
         </div>
       )}

@@ -6,6 +6,7 @@ import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, T
 import { SectionCard } from "@/components/common/section-card";
 import { formatMoney, formatMoneyCompact, formatMonth, formatMonthShort } from "@/lib/format";
 import type { TrendPoint } from "@/lib/queries";
+import { featureOn } from "@/lib/features";
 
 const tick = { fill: "var(--muted-foreground)", fontSize: 11 };
 
@@ -18,9 +19,11 @@ export function FinancialTrend({ data }: { data: TrendPoint[] }) {
       title="Financial trend, 12 months"
       description={last && prev ? `NOI ${formatMoney(last.noi)} so far this month · ${formatMoney(prev.noi)} last month` : undefined}
       action={
-        <Link href="/analytics" className="text-xs font-medium text-brand hover:underline">
-          All analytics
-        </Link>
+        featureOn("analytics") ? (
+          <Link href="/analytics" className="text-xs font-medium text-brand hover:underline">
+            All analytics
+          </Link>
+        ) : undefined
       }
     >
       <div className="h-64 w-full">

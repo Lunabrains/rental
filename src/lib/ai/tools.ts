@@ -35,6 +35,7 @@ import {
 import type { AlertCategory, AlertSeverity, ExpenseCategory, ID, Property, Store } from "@/types";
 
 import type { PageContext, ToolDefinition } from "./types";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 /**
  * The AI's only way into the data: a read-only tool layer over the query
@@ -45,6 +46,8 @@ import type { PageContext, ToolDefinition } from "./types";
 const optionalProperty = {
   property: { type: "string", description: "Building name, code or id. Defaults to the building the user is looking at, if any." },
 };
+
+const TOOL_FEATURES: Record<string, FeatureKey> = { get_maintenance_summary: "maintenance", get_supplier_performance: "suppliers", get_cash_flow_forecast: "cashflow" };
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
@@ -247,6 +250,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
   },
 ];
+
+/** Tools for this edition — sections that are switched off are not offered to the model. */
+export function availableTools(): ToolDefinition[] {
+  return TOOL_DEFINITIONS.filter((t) => !TOOL_FEATURES[t.name] || featureOn(TOOL_FEATURES[t.name]));
+}
 
 /* ------------------------------ Resolution ------------------------------- */
 

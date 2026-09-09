@@ -6,6 +6,7 @@ import { isOccupying } from "@/lib/derived/occupancy";
 import { formatDate, formatMoney, formatPercent, labelize } from "@/lib/format";
 import { getCashFlowForecast, getDeposits, getExpiringContracts, getInspections, getMoves, getOverduePayments, getPortfolioOverview, getPreventivePlans, getRenovations, getUpcomingPayments, getWorkOrders } from "@/lib/queries";
 import type { AlertAction, AlertSeverity, ISODate, Store } from "@/types";
+import { briefingItemVisible, featureOn } from "@/lib/features";
 
 export type BriefingTone = AlertSeverity | "success" | "neutral";
 
@@ -171,7 +172,7 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
   if (overdue.length > 0) bits.push(`${plural(overdue.length, "tenant")} overdue for ${formatMoney(overdue.reduce((n, p) => n + p.outstanding, 0))}`);
   if (invoices.length > 0) bits.push(`${plural(invoices.length, "supplier invoice")} due this week`);
   const emergencies = openOrders.filter((w) => w.workOrder.priority === "emergency").length;
-  if (emergencies > 0) bits.push(`${plural(emergencies, "emergency", "emergencies")} still open`);
+  if (featureOn("maintenance") && emergencies > 0) bits.push(`${plural(emergencies, "emergency", "emergencies")} still open`);
   if (week.length > 0) bits.push(`${plural(week.length, "thing")} on the calendar this week`);
   if (bits.length > 0) narrative.push(`Today: ${bits.join(", ")}.`);
   if (good.length > 0) narrative.push(`On the bright side, ${good.map((g) => g.title.charAt(0).toLowerCase() + g.title.slice(1)).join("; ")}.`);
@@ -185,16 +186,19 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
     narrative,
     numbers,
     sections: [
-      { key: "decide", title: "Decide today", description: "Approvals, renewals, settlements and projects that need your call", items: decide },
-      { key: "money", title: "Money", description: "Overdue rent, rent due today, supplier invoices this week", items: money },
-      { key: "today", title: "Today & this week", description: "Moves, inspections, services, contract ends and instalments", items: week },
-      { key: "operations", title: "Operations", description: "What is stuck, broken or sitting empty", items: ops },
-      { key: "good_news", title: "Good news", description: "What went right recently", items: good },
+      { key: "decide", title: "Decide today", description: "Approvals, renewals, settlements and projects that need your call", items: vis(decide) },
+      { key: "money", title: "Money", description: "Overdue rent, rent due today, supplier invoices this week", items: vis(money) },
+      { key: "today", title: "Today & this week", description: "Moves, inspections, services, contract ends and instalments", items: vis(week) },
+      { key: "operations", title: "Operations", description: "What is stuck, broken or sitting empty", items: vis(ops) },
+      { key: "good_news", title: "Good news", description: "What went right recently", items: vis(good) },
     ],
   };
 }
 
 /** Plain-text version for copy / print / e-mail. */
+/** Items that belong to a section switched off in this edition are left out. */
+const vis = (items: BriefingItem[]): BriefingItem[] => items.filter((i) => briefingItemVisible(i.id));
+
 export function briefingAsText(b: DailyBriefing, companyName: string): string {
   const lines: string[] = [`${companyName} — daily briefing, ${formatDate(b.date)}`, b.headline, ""];
   for (const p of b.narrative) lines.push(p, "");

@@ -25,6 +25,7 @@ import { formatDate, formatMoney, formatMoneyCompact, formatMonth, formatMonthSh
 import { getAssetDetails, type PlanRow, type TimelineEvent } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
+import { featureOn } from "@/lib/features";
 
 /** Asset page (plan §Phase 8): status, service, work, cost and documents for one piece of equipment — the QR scan lands here. */
 export function AssetPage({ assetId }: { assetId: string }) {
@@ -54,7 +55,9 @@ export function AssetPage({ assetId }: { assetId: string }) {
     ...d.expenses.filter((e) => !e.expense.workOrderId).map((e) => ({ id: `e-${e.expense.id}`, at: e.expense.expenseDate, title: `${e.expense.description}`, detail: `${formatMoney(e.expense.amount)} · ${labelize(e.expense.category)}`, tone: "default" as const, kind: "expense" as const })),
     ...d.inspections.map((i) => ({ id: `i-${i.id}`, at: i.completedDate ?? i.scheduledDate, title: `${labelize(i.type)} inspection ${i.overallResult ?? i.status}`, detail: i.inspector, tone: (i.overallResult === "fail" ? "critical" : "default") as TimelineEvent["tone"], kind: "inspection" as const })),
     ...(a.installationDate ? [{ id: "installed", at: a.installationDate, title: `${a.name} installed`, detail: `${a.manufacturer ?? ""} ${a.model ?? ""}${a.purchaseCost ? ` · ${formatMoney(a.purchaseCost)}` : ""}`.trim(), tone: "info" as const, kind: "asset" as const }] : []),
-  ].sort((x, y) => (x.at < y.at ? 1 : -1));
+  ]
+    .filter((e) => (e.id.startsWith("wo-") ? featureOn("maintenance") : e.id.startsWith("i-") ? featureOn("inspections") : true))
+    .sort((x, y) => (x.at < y.at ? 1 : -1));
 
   const planColumns: Column<PlanRow>[] = [
     { key: "type", header: "Service", cell: (r) => <span className="font-medium">{r.plan.maintenanceType}</span> },
@@ -105,9 +108,11 @@ export function AssetPage({ assetId }: { assetId: string }) {
             <Button variant="outline" onClick={() => editAsset(a.id)}>
               <Pencil className="size-4" /> Edit
             </Button>
-            <Button onClick={() => createWorkOrder({ propertyId: a.propertyId, unitId: a.unitId, assetId: a.id, title: `${a.name} — `, category: a.assetType === "elevator" ? "elevator" : a.assetType === "generator" ? "generator" : a.assetType === "hvac" ? "hvac" : "other", supplierId: a.supplierId, priority: a.status === "out_of_service" ? "emergency" : "normal" })}>
+            {featureOn("maintenance") && (
+<Button onClick={() => createWorkOrder({ propertyId: a.propertyId, unitId: a.unitId, assetId: a.id, title: `${a.name} — `, category: a.assetType === "elevator" ? "elevator" : a.assetType === "generator" ? "generator" : a.assetType === "hvac" ? "hvac" : "other", supplierId: a.supplierId, priority: a.status === "out_of_service" ? "emergency" : "normal" })}>
               <Wrench className="size-4" /> Work order
             </Button>
+)}
           </>
         }
       />
@@ -115,22 +120,28 @@ export function AssetPage({ assetId }: { assetId: string }) {
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Last service" value={a.lastServiceDate ? formatDate(a.lastServiceDate) : "—"} sublabel={d.plans.length > 0 ? `${d.plans.length} preventive plan${d.plans.length === 1 ? "" : "s"}` : "No preventive plan"} />
         <KpiCard label="Next service" value={a.nextServiceDate ? formatDate(a.nextServiceDate) : "—"} sublabel={d.daysToService !== null ? (d.daysToService < 0 ? `${Math.abs(d.daysToService)} days overdue` : `in ${d.daysToService} days`) : "Add a plan to schedule it"} tone={d.serviceState === "overdue" ? "critical" : d.serviceState === "due_soon" ? "warning" : "default"} />
-        <KpiCard label="Open work orders" value={openOrders.length} tone={openOrders.some((w) => w.workOrder.priority === "emergency") ? "critical" : openOrders.length > 0 ? "warning" : "success"} sublabel={openOrders[0]?.workOrder.title ?? "Nothing open"} />
+        {featureOn("maintenance") && (
+<KpiCard label="Open work orders" value={openOrders.length} tone={openOrders.some((w) => w.workOrder.priority === "emergency") ? "critical" : openOrders.length > 0 ? "warning" : "success"} sublabel={openOrders[0]?.workOrder.title ?? "Nothing open"} />
+)}
         <KpiCard label="Total spend" value={formatMoney(d.totalSpend)} sublabel={a.purchaseCost ? `Purchased for ${formatMoney(a.purchaseCost)}${a.warrantyExpiry ? ` · warranty ${d.warrantyDays !== null && d.warrantyDays < 0 ? "expired" : `to ${formatDate(a.warrantyExpiry)}`}` : ""}` : "Work orders and services"} tone={d.warrantyDays !== null && d.warrantyDays >= 0 && d.warrantyDays <= 60 ? "warning" : "default"} />
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
         <div className="space-y-5">
-          <SectionCard title="Preventive maintenance" description="Recurring services and when they fall due" action={<Button size="sm" variant="outline" onClick={() => addPlan({ propertyId: a.propertyId, assetId: a.id })}><Plus className="size-3.5" /> Add plan</Button>} flush>
+          {featureOn("maintenance") && (
+<SectionCard title="Preventive maintenance" description="Recurring services and when they fall due" action={<Button size="sm" variant="outline" onClick={() => addPlan({ propertyId: a.propertyId, assetId: a.id })}><Plus className="size-3.5" /> Add plan</Button>} flush>
             <div className="p-3">
               <DataTable rows={d.plans} columns={planColumns} rowKey={(r) => r.plan.id} dense emptyTitle="No preventive plan yet" emptyDescription="Add one to get due and overdue alerts." />
             </div>
           </SectionCard>
-          <SectionCard title="Work orders" description={`${d.workOrders.length} on record`} flush>
+)}
+          {featureOn("maintenance") && (
+<SectionCard title="Work orders" description={`${d.workOrders.length} on record`} flush>
             <div className="p-3">
               <DataTable rows={d.workOrders} columns={workOrderColumns.filter((c) => c.key !== "where")} rowKey={(r) => r.workOrder.id} onRowClick={(r) => openWorkOrder(r.workOrder.id)} dense emptyTitle="No work orders" emptyIcon={Wrench} />
             </div>
           </SectionCard>
+)}
           <SectionCard title="Cost history" description="Services, repairs and parts per month, last 12 months">
             <div className="h-44 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -163,7 +174,7 @@ export function AssetPage({ assetId }: { assetId: string }) {
               <Field label="Installed">{formatDate(a.installationDate)}</Field>
               <Field label="Purchase cost">{a.purchaseCost ? formatMoney(a.purchaseCost) : "—"}</Field>
               <Field label="Warranty">{a.warrantyExpiry ? formatDate(a.warrantyExpiry) : "—"}</Field>
-              <Field label="Supplier">{d.supplier ? <Link href={`/suppliers/${d.supplier.id}`} className="hover:underline">{d.supplier.name}</Link> : "—"}</Field>
+              <Field label="Supplier">{d.supplier ? featureOn("suppliers") ? <Link href={`/suppliers/${d.supplier.id}`} className="hover:underline">{d.supplier.name}</Link> : d.supplier.name : "—"}</Field>
               <Field label="Building">
                 <Link href={`/properties/${d.property.id}?view=assets`} className="hover:underline">
                   {d.property.name}
@@ -172,7 +183,8 @@ export function AssetPage({ assetId }: { assetId: string }) {
             </dl>
             {a.notes && <p className="mt-3 rounded-md bg-muted/50 p-3 text-sm">{a.notes}</p>}
           </SectionCard>
-          <SectionCard title="Documents & manuals" description={`${d.documents.length} on file`} flush>
+          {featureOn("documents") && (
+<SectionCard title="Documents & manuals" description={`${d.documents.length} on file`} flush>
             {d.documents.length === 0 ? (
               <div className="px-4 pb-3">
                 <p className="text-xs text-muted-foreground">Manuals, certificates and warranties live here; certificates with an expiry raise alerts.</p>
@@ -188,6 +200,7 @@ export function AssetPage({ assetId }: { assetId: string }) {
               <AttachmentUploader compact links={{ assetId: a.id, propertyId: a.propertyId }} category="certificate" label="Attach manual / certificate" />
             </div>
           </SectionCard>
+)}
           <SectionCard title="History">
             <Timeline events={timeline} limit={30} />
           </SectionCard>

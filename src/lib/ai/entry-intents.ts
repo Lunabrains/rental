@@ -6,6 +6,7 @@ import { ASSET_TYPES, EXPENSE_CATEGORIES, SUPPLIER_CATEGORIES, type AssetType, t
 
 import { strings, type Lang } from "./i18n";
 import type { AnswerAction, AssistantAnswer } from "./types";
+import { featureOn } from "@/lib/features";
 
 /**
  * Data entry by talking: "add a new building called Marina Residence with 5
@@ -253,6 +254,7 @@ export function entryKindOf(q: string): EntryKind | null {
     if (m && (!best || m.index < best.at)) best = { kind, at: m.index };
   }
   // "add tenant X to unit 403" is a tenant; "add unit 403 to building X" is a unit — earliest noun wins.
+  if (best?.kind === "supplier" && !featureOn("suppliers")) return null;
   return best?.kind ?? null;
 }
 

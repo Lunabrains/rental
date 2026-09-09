@@ -37,6 +37,12 @@ enters operating results.
 - **Operations** — inspections from checklist templates, move-in / move-out checklists that tie
   together the condition report, keys, closing readings and the deposit, keys and parking registers,
   renovation / CapEx projects with return estimates.
+- **Simple edition** — the sidebar is deliberately short: Dashboard, Daily briefing, Properties,
+  Assets, Tenants, Contracts, Alerts, Rent roll, Payments, Expenses, AI assistant, Import, Settings.
+  Budgets, deposits, utilities, common charges, cash flow, work orders, preventive maintenance,
+  suppliers, inspections, keys, parking, renovations, analytics, documents and reports are switched
+  off in `src/lib/features.ts` (one line each to bring back); their data, importer and engine
+  remain and are still tested.
 - **Data entry, three ways** — create / edit forms for buildings, units, tenants and contracts
   (plus the existing ones for assets, suppliers, expenses, work orders, inspections, keys, parking,
   renovations); an importer that reads the owner's own spreadsheets (tabs and columns matched by

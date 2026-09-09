@@ -5,6 +5,7 @@ import { isOccupying } from "@/lib/derived/occupancy";
 import { formatMoney, formatPercent, labelize } from "@/lib/format";
 import { getSuppliers } from "@/lib/queries";
 import type { AlertSeverity, ISODate, Store } from "@/types";
+import { featureOn, hrefVisible } from "@/lib/features";
 
 export interface Insight {
   id: string;
@@ -55,7 +56,7 @@ export function getInsights(store: Store, base: ISODate = today(), limit = 5): I
     const unit = idx.unitById.get(g.unitId);
     const property = idx.propertyById.get(g.propertyId);
     if (!unit || !property) continue;
-    out.push({ id: `repeat-${g.unitId}-${g.category}`, text: `${property.name} ${unit.unitNumber} has had ${g.count} ${labelize(g.category).toLowerCase()} work orders in ${t.repeatIssueWindowDays} days — a permanent fix will be cheaper than the next call-out.`, href: `/units/${unit.id}?tab=maintenance`, tone: "warning", weight: 350 + g.count * 50, source: "Work orders on the unit within the repeat-issue window" });
+    if (featureOn("maintenance")) out.push({ id: `repeat-${g.unitId}-${g.category}`, text: `${property.name} ${unit.unitNumber} has had ${g.count} ${labelize(g.category).toLowerCase()} work orders in ${t.repeatIssueWindowDays} days — a permanent fix will be cheaper than the next call-out.`, href: `/units/${unit.id}?tab=maintenance`, tone: "warning", weight: 350 + g.count * 50, source: "Work orders on the unit within the repeat-issue window" });
   }
 
   /* Contracts expiring within 30 days. */
@@ -113,5 +114,5 @@ export function getInsights(store: Store, base: ISODate = today(), limit = 5): I
   }
 
   void currentPeriod;
-  return out.sort((a, b) => b.weight - a.weight).slice(0, limit);
+  return out.filter((i) => hrefVisible(i.href)).sort((a, b) => b.weight - a.weight).slice(0, limit);
 }

@@ -4,6 +4,7 @@ import { KpiCard, type KpiTrend } from "@/components/common/kpi-card";
 import { formatMoney, formatPercent } from "@/lib/format";
 import type { NoiResult } from "@/lib/derived/metrics";
 import type { PortfolioOverview } from "@/lib/queries";
+import { visibleHref } from "@/lib/features";
 
 function moneyTrend(delta: number, upIsGood: boolean): KpiTrend {
   const direction = Math.abs(delta) < 1 ? "flat" : delta > 0 ? "up" : "down";
@@ -38,7 +39,7 @@ export function HeroKpis({ overview, thisMonth, lastMonth, outstandingThreshold 
         <KpiCard label="Collected" value={formatMoney(thisMonth.collected)} sublabel={`${formatPercent(collectionRate)} of due${lastMonth.income > 0 ? ` · ${formatPercent(lastRate)} last month` : ""}`} icon={PiggyBank} tone={collectionRate >= 0.9 ? "success" : collectionRate >= 0.7 ? "warning" : "critical"} href="/payments" />
         <KpiCard label="Outstanding" value={formatMoney(overview.outstanding.current)} trend={moneyTrend(overview.outstanding.delta, false)} icon={AlertTriangle} tone={overview.outstanding.current > outstandingThreshold ? "critical" : overview.outstanding.current > 0 ? "warning" : "success"} href="/payments?status=overdue" />
         <KpiCard label="Monthly expenses" value={formatMoney(thisMonth.operatingExpenses)} trend={moneyTrend(thisMonth.operatingExpenses - lastMonth.operatingExpenses, false)} icon={Wallet} href="/finance/expenses" />
-        <KpiCard label="NOI" value={formatMoney(thisMonth.noi)} trend={moneyTrend(thisMonth.noi - lastMonth.noi, true)} sublabel={thisMonth.capex > 0 ? `${formatMoney(thisMonth.capex)} CapEx kept out` : undefined} icon={TrendingUp} tone={thisMonth.noi < 0 ? "critical" : "default"} href="/analytics/performance" />
+        <KpiCard label="NOI" value={formatMoney(thisMonth.noi)} trend={moneyTrend(thisMonth.noi - lastMonth.noi, true)} sublabel={thisMonth.capex > 0 ? `${formatMoney(thisMonth.capex)} CapEx kept out` : undefined} icon={TrendingUp} tone={thisMonth.noi < 0 ? "critical" : "default"} href={visibleHref("/analytics/performance")} />
       </div>
       <div className="tabular mt-3 flex flex-wrap items-center gap-x-5 gap-y-1 px-1 text-xs text-muted-foreground">
         <span>

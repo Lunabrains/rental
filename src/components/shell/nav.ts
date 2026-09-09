@@ -29,6 +29,7 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 export interface NavItem {
   href: string;
@@ -36,6 +37,8 @@ export interface NavItem {
   icon: LucideIcon;
   /** Matches nested routes too (e.g. /properties/xyz). */
   match?: (pathname: string) => boolean;
+  /** Section switch (src/lib/features.ts); items of sections that are off are not shown. */
+  feature?: FeatureKey;
 }
 
 export interface NavGroup {
@@ -46,7 +49,7 @@ export interface NavGroup {
 const startsWith = (prefix: string) => (pathname: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
-export const NAV_GROUPS: NavGroup[] = [
+const ALL_GROUPS: NavGroup[] = [
   {
     label: null,
     items: [
@@ -65,44 +68,44 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/finance/rent-roll", label: "Rent roll", icon: Receipt, match: startsWith("/finance/rent-roll") },
       { href: "/payments", label: "Payments", icon: CreditCard, match: startsWith("/payments") },
       { href: "/finance/expenses", label: "Expenses", icon: Wallet, match: startsWith("/finance/expenses") },
-      { href: "/finance/budgets", label: "Budgets", icon: Target, match: startsWith("/finance/budgets") },
-      { href: "/finance/deposits", label: "Deposits", icon: PiggyBank, match: startsWith("/finance/deposits") },
-      { href: "/finance/utilities", label: "Utilities", icon: Gauge, match: startsWith("/finance/utilities") },
-      { href: "/finance/charges", label: "Common charges", icon: Layers, match: startsWith("/finance/charges") },
-      { href: "/finance/cash-flow", label: "Cash flow", icon: LineChart, match: startsWith("/finance/cash-flow") },
+      { href: "/finance/budgets", label: "Budgets", icon: Target, match: startsWith("/finance/budgets"), feature: "budgets" },
+      { href: "/finance/deposits", label: "Deposits", icon: PiggyBank, match: startsWith("/finance/deposits"), feature: "deposits" },
+      { href: "/finance/utilities", label: "Utilities", icon: Gauge, match: startsWith("/finance/utilities"), feature: "utilities" },
+      { href: "/finance/charges", label: "Common charges", icon: Layers, match: startsWith("/finance/charges"), feature: "charges" },
+      { href: "/finance/cash-flow", label: "Cash flow", icon: LineChart, match: startsWith("/finance/cash-flow"), feature: "cashflow" },
     ],
   },
   {
     label: "Maintenance",
     items: [
-      { href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || (p.startsWith("/maintenance/") && !p.startsWith("/maintenance/preventive")) },
-      { href: "/maintenance/preventive", label: "Preventive", icon: CalendarClock, match: startsWith("/maintenance/preventive") },
-      { href: "/suppliers", label: "Suppliers", icon: Truck, match: startsWith("/suppliers") },
+      { href: "/maintenance", label: "Work orders", icon: Wrench, match: (p) => p === "/maintenance" || (p.startsWith("/maintenance/") && !p.startsWith("/maintenance/preventive")), feature: "maintenance" },
+      { href: "/maintenance/preventive", label: "Preventive", icon: CalendarClock, match: startsWith("/maintenance/preventive"), feature: "maintenance" },
+      { href: "/suppliers", label: "Suppliers", icon: Truck, match: startsWith("/suppliers"), feature: "suppliers" },
     ],
   },
   {
     label: "Operations",
     items: [
-      { href: "/inspections", label: "Inspections", icon: ClipboardCheck, match: startsWith("/inspections") },
-      { href: "/keys", label: "Keys", icon: KeyRound, match: startsWith("/keys") },
-      { href: "/parking", label: "Parking", icon: Car, match: startsWith("/parking") },
-      { href: "/renovations", label: "Renovations", icon: Hammer, match: startsWith("/renovations") },
+      { href: "/inspections", label: "Inspections", icon: ClipboardCheck, match: startsWith("/inspections"), feature: "inspections" },
+      { href: "/keys", label: "Keys", icon: KeyRound, match: startsWith("/keys"), feature: "keys" },
+      { href: "/parking", label: "Parking", icon: Car, match: startsWith("/parking"), feature: "parking" },
+      { href: "/renovations", label: "Renovations", icon: Hammer, match: startsWith("/renovations"), feature: "renovations" },
     ],
   },
   {
     label: "Analytics",
     items: [
-      { href: "/analytics", label: "Portfolio", icon: BarChart3, match: (p) => p === "/analytics" },
-      { href: "/analytics/performance", label: "Performance", icon: TrendingUp, match: startsWith("/analytics/performance") },
-      { href: "/analytics/expenses", label: "Expenses", icon: Wallet, match: startsWith("/analytics/expenses") },
-      { href: "/analytics/maintenance", label: "Maintenance", icon: Wrench, match: startsWith("/analytics/maintenance") },
+      { href: "/analytics", label: "Portfolio", icon: BarChart3, match: (p) => p === "/analytics", feature: "analytics" },
+      { href: "/analytics/performance", label: "Performance", icon: TrendingUp, match: startsWith("/analytics/performance"), feature: "analytics" },
+      { href: "/analytics/expenses", label: "Expenses", icon: Wallet, match: startsWith("/analytics/expenses"), feature: "analytics" },
+      { href: "/analytics/maintenance", label: "Maintenance", icon: Wrench, match: startsWith("/analytics/maintenance"), feature: "analytics" },
     ],
   },
   {
     label: "Library",
     items: [
-      { href: "/documents", label: "Documents", icon: FolderOpen, match: startsWith("/documents") },
-      { href: "/reports", label: "Reports", icon: BarChart3, match: startsWith("/reports") },
+      { href: "/documents", label: "Documents", icon: FolderOpen, match: startsWith("/documents"), feature: "documents" },
+      { href: "/reports", label: "Reports", icon: BarChart3, match: startsWith("/reports"), feature: "reports" },
     ],
   },
   {
@@ -114,6 +117,9 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
 ];
+
+/** Navigation for this edition — sections that are switched off are left out, empty groups disappear. */
+export const NAV_GROUPS: NavGroup[] = ALL_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => !i.feature || featureOn(i.feature)) })).filter((g) => g.items.length > 0);
 
 export function findNavItem(pathname: string): NavItem | undefined {
   for (const group of NAV_GROUPS) {

@@ -18,6 +18,7 @@ import { TenantTab } from "@/components/units/tenant-tab";
 import { useStore } from "@/lib/data/store-context";
 import { getUnitDetails, getUnitTimeline } from "@/lib/queries";
 import type { StoredDocument } from "@/types";
+import { featureOn } from "@/lib/features";
 
 interface UnitDrawerProps {
   unitId: string | null;
@@ -26,13 +27,14 @@ interface UnitDrawerProps {
   onClose: () => void;
 }
 
-const TABS: { key: DrawerTab; label: string }[] = [
+const ALL_TABS: { key: DrawerTab; label: string }[] = [
   { key: "tenant", label: "Tenant" },
   { key: "contract", label: "Contract" },
   { key: "payments", label: "Payments" },
   { key: "documents", label: "Documents" },
   { key: "activity", label: "Activity" },
 ];
+const TABS = ALL_TABS.filter((t) => t.key !== "documents" || featureOn("documents"));
 
 /**
  * Right-side drawer for one unit. Non-modal so the building stays visible

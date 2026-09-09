@@ -11,6 +11,7 @@ import { useStore } from "@/lib/data/store-context";
 import { formatMoney, labelize } from "@/lib/format";
 import { searchAll } from "@/lib/queries";
 import { NAV_GROUPS } from "@/components/shell/nav";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 /**
  * Global search and command palette (plan §11): ⌘K / Ctrl+K anywhere. Typing
@@ -47,22 +48,23 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
     fn();
   }
 
-  const actions: { label: string; hint: string; icon: typeof Plus; run: () => void }[] = [
+  const allActions: { label: string; hint: string; icon: typeof Plus; run: () => void; feature?: FeatureKey }[] = [
     { label: "Add a building", hint: "Name, layout and paperwork — units can be generated in one go", icon: Building2, run: () => addProperty() },
     { label: "Add a unit", hint: "One apartment, shop or office", icon: DoorOpen, run: () => addUnit() },
     { label: "Add a tenant", hint: "Contact and ID — the contract can follow right away", icon: UserPlus, run: () => addTenantRecord() },
     { label: "New contract", hint: "An existing tenant moving into a unit", icon: FileSignature, run: () => newContract() },
-    { label: "Add a supplier", hint: "Contractor, technician or company", icon: Truck, run: () => addSupplier() },
+    { label: "Add a supplier", hint: "Contractor, technician or company", icon: Truck, run: () => addSupplier(), feature: "suppliers" },
     { label: "Import a spreadsheet", hint: "Your own Excel files — columns are matched for you", icon: Upload, run: () => router.push("/settings/import") },
     { label: "Record a payment", hint: "Pick the tenant on the payments board", icon: Receipt, run: () => router.push("/payments?status=overdue") },
     { label: "Add an expense", hint: "Invoice, bill or receipt", icon: Wallet, run: () => addExpense({}) },
-    { label: "Create a work order", hint: "Repair, complaint or inspection follow-up", icon: Wrench, run: () => createWorkOrder({}) },
-    { label: "Add a document", hint: "Upload and file it against the right record", icon: FolderOpen, run: () => router.push("/documents") },
-    { label: "Record a utility reading", hint: "Meters and consumption", icon: Gauge, run: () => router.push("/finance/utilities") },
-    { label: "Schedule an inspection", hint: "Move-in, move-out, annual or safety", icon: ClipboardCheck, run: () => scheduleInspection({}) },
+    { label: "Create a work order", hint: "Repair, complaint or inspection follow-up", icon: Wrench, run: () => createWorkOrder({}), feature: "maintenance" },
+    { label: "Add a document", hint: "Upload and file it against the right record", icon: FolderOpen, run: () => router.push("/documents"), feature: "documents" },
+    { label: "Record a utility reading", hint: "Meters and consumption", icon: Gauge, run: () => router.push("/finance/utilities"), feature: "utilities" },
+    { label: "Schedule an inspection", hint: "Move-in, move-out, annual or safety", icon: ClipboardCheck, run: () => scheduleInspection({}), feature: "inspections" },
     { label: "Register an asset", hint: "Elevator, generator, pump…", icon: ClipboardList, run: () => addAsset(null) },
-    { label: "Run a report", hint: "Rent roll, balances, P&L, exports", icon: FileText, run: () => router.push("/reports") },
+    { label: "Run a report", hint: "Rent roll, balances, P&L, exports", icon: FileText, run: () => router.push("/reports"), feature: "reports" },
   ];
+  const actions = allActions.filter((a) => !a.feature || featureOn(a.feature));
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -119,7 +121,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                     ))}
                   </CommandGroup>
                 )}
-                {results.suppliers.length > 0 && (
+                {featureOn("suppliers") && results.suppliers.length > 0 && (
                   <CommandGroup heading="Suppliers">
                     {results.suppliers.map((s) => (
                       <CommandItem key={s.id} value={`supplier-${s.id}`} onSelect={() => go(() => openSupplier(s.id))}>
@@ -130,7 +132,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                     ))}
                   </CommandGroup>
                 )}
-                {results.workOrders.length > 0 && (
+                {featureOn("maintenance") && results.workOrders.length > 0 && (
                   <CommandGroup heading="Work orders">
                     {results.workOrders.map(({ workOrder, property, unit }) => (
                       <CommandItem key={workOrder.id} value={`wo-${workOrder.id}`} onSelect={() => go(() => openWorkOrder(workOrder.id))}>
@@ -152,7 +154,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
                     ))}
                   </CommandGroup>
                 )}
-                {results.documents.length > 0 && (
+                {featureOn("documents") && results.documents.length > 0 && (
                   <CommandGroup heading="Documents">
                     {results.documents.map(({ document, owner }) => (
                       <CommandItem key={document.id} value={`doc-${document.id}`} onSelect={() => go(() => reviewDocument(document.id))}>
