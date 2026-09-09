@@ -17,6 +17,7 @@ export * from "./maintenance";
 export * from "./inspections";
 export * from "./renovations";
 export * from "./entities";
+export * from "./flags";
 
 /* -------------------------------- Import ---------------------------------- */
 

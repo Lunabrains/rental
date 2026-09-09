@@ -163,6 +163,8 @@ const BY_ENTITY: Partial<Record<ImportEntity, Syn>> = {
     occupation: ["occupation", "job", "profession", "work", "employer", "المهنة", "الوظيفة", "العمل"],
     emergency_contact_name: ["emergency contact", "emergency contact name", "emergency name", "next of kin", "جهة الاتصال للطوارئ", "اسم للطوارئ"],
     emergency_contact_phone: ["emergency phone", "emergency contact phone", "emergency number", "kin phone", "هاتف الطوارئ", "رقم الطوارئ"],
+    complaint: ["complaint", "open complaint", "dispute", "issue with tenant", "شكوى", "الشكوى", "شكاوى"],
+    complaint_date: ["complaint date", "date of complaint", "تاريخ الشكوى"],
   },
   contracts: {
     contract_number: ["contract", "contract number", "contract no", "contract #", "lease", "lease number", "lease no", "agreement", "agreement number", "ref", "reference", "رقم العقد", "العقد", "المرجع"],
@@ -179,6 +181,9 @@ const BY_ENTITY: Partial<Record<ImportEntity, Syn>> = {
     renewal_decision: ["renewal", "renewal decision", "renew", "decision", "التجديد", "قرار التجديد"],
     proposed_rent: ["proposed rent", "new rent", "renewal rent", "الإيجار المقترح", "الإيجار الجديد"],
     renewal_notes: ["renewal notes", "ملاحظات التجديد"],
+    vacate_undertaking_signed: ["undertaking signed", "vacate undertaking", "undertaking to vacate", "undertaking date", "تعهد بالاخلاء", "تعهد بالإخلاء", "تعهد", "تاريخ التعهد"],
+    vacate_by: ["vacate by", "vacate date", "leave by", "vacating on", "agreed to vacate", "تاريخ الاخلاء", "الاخلاء", "الإخلاء", "يخلي بتاريخ"],
+    vacate_notes: ["vacate notes", "undertaking notes", "ملاحظات التعهد"],
   },
   suppliers: {
     company: ["company", "company name", "firm", "الشركة", "اسم الشركة"],

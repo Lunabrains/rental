@@ -29,6 +29,7 @@ export function normalizeArabic(text: string): string {
 /** Multi-word phrases first (longest match wins), then single words. */
 const PHRASES: [string, string][] = [
   // data entry
+  ["تعهد بالاخلاء", "vacate undertaking"], ["تعهد اخلاء", "vacate undertaking"], ["تعهد الاخلاء", "vacate undertaking"], ["سجل شكوى", "open complaint"], ["افتح شكوى", "open complaint"], ["ضيف شكوى", "open complaint"], ["في شكوى", "open complaint"], ["عنده شكوى", "open complaint"], ["عندها شكوى", "open complaint"],
   ["مبنى جديد", "new building"], ["بنايه جديده", "new building"], ["عماره جديده", "new building"], ["عقار جديد", "new building"], ["شقه جديده", "new unit"], ["وحده جديده", "new unit"], ["مستاجر جديد", "new tenant"], ["مستاجره جديده", "new tenant"], ["عقد جديد", "new contract"], ["مورد جديد", "new supplier"], ["اصل جديد", "new asset"], ["مصروف جديد", "new expense"], ["فاتوره جديده", "new expense"],
   ["ضيف مستاجر", "add tenant"], ["سجل مستاجر", "add tenant"], ["ضيف مبنى", "add building"], ["ضيف بنايه", "add building"], ["ضيف شقه", "add unit"], ["ضيف عقد", "add contract"], ["سجل عقد", "add contract"], ["ضيف مورد", "add supplier"], ["ضيف مصروف", "add expense"], ["سجل مصروف", "add expense"], ["ضيف اصل", "add asset"], ["ضيف فاتوره", "add expense"],
   ["رقم الهاتف", "phone"], ["رقم التلفون", "phone"], ["رقم الموبايل", "phone"], ["رقم الجوال", "phone"], ["رقمه", "phone"], ["رقمها", "phone"], ["بكل طابق", "per floor"], ["لكل طابق", "per floor"], ["في كل طابق", "per floor"], ["على كل طابق", "per floor"], ["بالطابق", "per floor"],
@@ -83,6 +84,7 @@ const PHRASES: [string, string][] = [
 
 const WORDS: Record<string, string> = {
   // data entry
+  شكوى: "complaint", الشكوى: "complaint", شكاوى: "complaints", الشكاوى: "complaints", تعهد: "undertaking", التعهد: "undertaking", اخلاء: "vacate", الاخلاء: "vacate", بحلول: "by", يخلي: "vacate", بيخلي: "vacate",
   اضف: "add", ضيفلي: "add", ضيفي: "add", زيد: "add", زيدلي: "add", سجلي: "register", سجللي: "register", ادخل: "add", ادخلي: "add", اسمه: "named", اسمها: "named", اسمو: "named", باسم: "named", اسم: "named", سميه: "named", سميها: "named", طوابق: "floors", الطوابق: "floors", طابقين: "2 floors", هاتف: "phone", الهاتف: "phone", تلفون: "phone", التلفون: "phone", موبايل: "phone", الموبايل: "phone", جوال: "phone", الجوال: "phone", ايميل: "email", الايميل: "email", بريد: "email", جديده: "new", الجديده: "new", مع: "with", حمام: "bathroom", حمامات: "bathrooms", متر: "sqm", مفروشه: "furnished", مفروش: "furnished", مضخه: "pump", المضخه: "pump", خزان: "tank", الخزان: "tank", سباك: "plumber", السباك: "plumber", كهربجي: "electrician", كهربائي: "electrician", الكهربجي: "electrician", ماركه: "brand", الماركه: "brand", موديل: "model", الموديل: "model", سيريال: "serial", جنسيته: "nationality", الجنسيه: "nationality", لبناني: "lebanese", لبنانيه: "lebanese", سوري: "syrian", سوريه: "syrian",
   // question words
   مين: "who", من: "who", لمين: "who", شو: "what", ماذا: "what", ما: "what", ايش: "what", شنو: "what", كيف: "how", وين: "where", اين: "where", ليش: "why", لماذا: "why",

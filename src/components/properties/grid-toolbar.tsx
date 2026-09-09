@@ -5,7 +5,17 @@ import { Search, X } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
-export type StatusFilter = "all" | "available" | "rented";
+import type { UnitFilter } from "@/lib/queries";
+
+export type StatusFilter = UnitFilter;
+
+const FILTERS: { key: StatusFilter; label: string; dir?: "rtl" }[] = [
+  { key: "all", label: "All" },
+  { key: "available", label: "Available" },
+  { key: "rented", label: "Rented" },
+  { key: "complaint", label: "Complaints" },
+  { key: "vacating", label: "تعهد بالإخلاء", dir: "rtl" },
+];
 
 interface GridToolbarProps {
   query: string;
@@ -58,17 +68,18 @@ export function GridToolbar({ query, onQuery, matchCount, floors, floor, onFloor
       </Select>
 
       <div className="flex rounded-md border bg-card p-0.5 text-xs">
-        {(["all", "rented", "available"] as StatusFilter[]).map((s) => (
+        {FILTERS.map(({ key: s, label, dir }) => (
           <button
             key={s}
             type="button"
+            dir={dir}
             onClick={() => onStatus(s)}
             className={cn(
               "rounded px-2.5 py-1 capitalize transition-colors",
               status === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            {s === "all" ? "All" : s === "available" ? "Available only" : "Rented only"}
+            {label}
           </button>
         ))}
       </div>

@@ -705,6 +705,10 @@ export function knownActionTarget(store: Store, kind: string, id: ID): boolean {
     case "create_expense":
     case "create_supplier":
       return id === "new";
+    case "open_complaint":
+      return idx.tenantById.has(id);
+    case "record_vacate":
+      return idx.contractById.has(id);
     default:
       return false;
   }

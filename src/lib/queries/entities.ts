@@ -16,14 +16,23 @@ import type {
   Unit,
   Asset,
   Supplier,
+  TenantComplaint,
+  VacateUndertaking,
 } from "@/types";
 
 /* ------------------------------ Building grid ----------------------------- */
+
+/** What the square's colour says: white, green, red, orange — or a dashed owner override. */
+export type UnitState = "available" | "rented" | "complaint" | "vacating" | "other";
+export type UnitFilter = "all" | "available" | "rented" | "complaint" | "vacating";
 
 export interface UnitCell {
   unit: Unit;
   tenant: Tenant | null;
   contract: Contract | null;
+  state: UnitState;
+  complaint: TenantComplaint | null;
+  vacate: VacateUndertaking | null;
   hasOverdue: boolean;
   expiringInDays: number | null;
   daysVacant: number | null;
@@ -41,14 +50,37 @@ function buildCell(store: Store, unit: Unit): UnitCell {
   const hasOverdue = contract
     ? (idx.paymentsByContract.get(contract.id) ?? []).some((p) => p.status === "overdue" || p.status === "partial")
     : false;
+  const complaint = tenant?.complaint ?? null;
+  const vacate = contract?.vacateUndertaking ?? null;
+  const rented = unit.status === "rented" && contract !== null;
+  const state: UnitState = rented ? (vacate ? "vacating" : complaint ? "complaint" : "rented") : unit.status === "available" ? "available" : "other";
   return {
     unit,
     tenant,
     contract,
+    state,
+    complaint,
+    vacate,
     hasOverdue,
     expiringInDays: contract ? daysUntil(contract.endDate) : null,
     daysVacant: unit.status === "available" && unit.availableSince ? Math.max(0, daysSince(unit.availableSince)) : null,
   };
+}
+
+/** Does a square match the grid filter? "Rented" includes the flagged ones; the flags match on the flag, whatever the colour. */
+export function cellMatches(cell: UnitCell, filter: UnitFilter): boolean {
+  switch (filter) {
+    case "all":
+      return true;
+    case "available":
+      return cell.state === "available";
+    case "rented":
+      return cell.state === "rented" || cell.state === "complaint" || cell.state === "vacating";
+    case "complaint":
+      return cell.complaint !== null;
+    case "vacating":
+      return cell.vacate !== null;
+  }
 }
 
 /** Floors stacked highest first; units left→right by number within a floor. */

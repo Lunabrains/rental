@@ -29,7 +29,9 @@ import type {
   RenovationStatus,
   RenovationType,
   SupplierCategory,
+  TenantComplaint,
   UnitCondition,
+  VacateUndertaking,
   UtilityType,
   WorkOrderCategory,
   WorkOrderPriority,
@@ -112,6 +114,7 @@ export interface TenantDraft {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   notes: string | null;
+  complaint: TenantComplaint | null;
 }
 
 export type PatternKind = "overdue" | "late" | "partial" | "unpaid";
@@ -144,6 +147,7 @@ export interface ContractDraft {
   proposedRent: number | null;
   renewalNotes: string | null;
   notes: string | null;
+  vacateUndertaking: VacateUndertaking | null;
   paymentPattern: PatternEntry[];
 }
 

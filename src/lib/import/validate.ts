@@ -678,6 +678,10 @@ function planTenants(rows: RawRow[], ctx: Ctx): PlannedRow<"tenants">[] {
       emergencyContactName: r.optionalText("emergency_contact_name"),
       emergencyContactPhone: r.optionalText("emergency_contact_phone"),
       notes: r.optionalText("notes"),
+      complaint: (() => {
+        const summary = r.optionalText("complaint");
+        return summary ? { openedOn: r.date("complaint_date") ?? ctx.base, summary } : null;
+      })(),
     };
 
     const key = phone || (idNumber ? `id:${idNumber.toUpperCase()}` : "");
@@ -742,6 +746,10 @@ function planContracts(rows: RawRow[], ctx: Ctx): PlannedRow<"contracts">[] {
       renewalDecision: decision === "" ? null : (decision as RenewalDecision),
       proposedRent: r.amount("proposed_rent"),
       renewalNotes: r.optionalText("renewal_notes"),
+      vacateUndertaking: (() => {
+        const vacateBy = r.date("vacate_by");
+        return vacateBy ? { signedOn: r.date("vacate_undertaking_signed") ?? vacateBy, vacateBy, notes: r.optionalText("vacate_notes") } : null;
+      })(),
       notes: r.optionalText("notes"),
       paymentPattern: pattern,
     };

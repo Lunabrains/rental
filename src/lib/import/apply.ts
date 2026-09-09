@@ -351,6 +351,7 @@ export function applyImport(store: Store, plan: ImportPlan, base: ISODate = toda
       proposedRent: d.proposedRent,
       renewalNotes: d.renewalNotes,
       notes: d.notes,
+      vacateUndertaking: d.vacateUndertaking,
     };
 
     if (existing) {

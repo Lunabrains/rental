@@ -1,6 +1,9 @@
 "use client";
 
-import { Mail, Phone } from "lucide-react";
+import { Mail, MessageSquareWarning, Phone } from "lucide-react";
+
+import { useActions } from "@/components/actions/action-provider";
+import { cn } from "@/lib/utils";
 
 import { formatDate, initials, labelize } from "@/lib/format";
 import type { UnitDetails } from "@/lib/queries";
@@ -15,6 +18,7 @@ export function Field({ label, children }: { label: string; children: React.Reac
 }
 
 export function TenantTab({ details }: { details: UnitDetails }) {
+  const { openComplaint } = useActions();
   const t = details.tenant;
   if (!t) return null;
   const tenure = details.history.filter((c) => c.tenantId === t.id).reduce((n, c) => n + c.durationMonths, 0);
@@ -40,6 +44,9 @@ export function TenantTab({ details }: { details: UnitDetails }) {
                 <Mail className="size-3.5" /> {t.email}
               </a>
             )}
+            <button type="button" onClick={() => openComplaint(t.id)} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs", t.complaint ? "border-unit-complaint-border bg-unit-complaint text-unit-complaint-foreground" : "bg-card hover:bg-accent")}>
+              <MessageSquareWarning className="size-3.5" /> {t.complaint ? "Complaint open" : "Complaint"}
+            </button>
           </div>
         </div>
       </div>
@@ -53,6 +60,11 @@ export function TenantTab({ details }: { details: UnitDetails }) {
         <Field label="Emergency phone">{t.emergencyContactPhone}</Field>
       </dl>
 
+      {t.complaint && (
+        <p className="rounded-md border border-unit-complaint-border bg-unit-complaint/10 p-3 text-sm">
+          <span className="font-medium">Complaint since {formatDate(t.complaint.openedOn)}:</span> {t.complaint.summary}
+        </p>
+      )}
       {t.notes && <p className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground">{t.notes}</p>}
     </div>
   );

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { BellPlus, Building2, Check, CircleDollarSign, FileText, Mail, Pencil, Phone, RefreshCw, Users, Wrench } from "lucide-react";
+import { BellPlus, Building2, Check, CircleDollarSign, FileText, LogOut, Mail, MessageSquareWarning, Pencil, Phone, RefreshCw, Users, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 import { useActions } from "@/components/actions/action-provider";
@@ -56,7 +56,7 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
   const { store } = useStoreContext();
   const router = useRouter();
   const params = useSearchParams();
-  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder, openInspection, scheduleInspection, editTenant, newContract } = useActions();
+  const { openUnit, openUnitPage, renewContract, recordPayment, createReminder, renewalDecision, openWorkOrder, createWorkOrder, openInspection, scheduleInspection, editTenant, newContract, openComplaint, recordVacate } = useActions();
   const t = useMemo(() => getTenant360(store, tenantId), [store, tenantId]);
   const [preview, setPreview] = useState<StoredDocument | null>(null);
 
@@ -128,6 +128,14 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
             <Button variant="outline" onClick={() => editTenant(tenant.id)}>
               <Pencil className="size-4" /> Edit
             </Button>
+            <Button variant="outline" className={tenant.complaint ? "border-unit-complaint-border bg-unit-complaint text-unit-complaint-foreground hover:bg-unit-complaint/90 hover:text-unit-complaint-foreground" : undefined} onClick={() => openComplaint(tenant.id)}>
+              <MessageSquareWarning className="size-4" /> {tenant.complaint ? "Complaint open" : "Complaint"}
+            </Button>
+            {current && (
+              <Button variant="outline" className={current.contract.vacateUndertaking ? "border-unit-vacating-border bg-unit-vacating text-unit-vacating-foreground hover:bg-unit-vacating/90 hover:text-unit-vacating-foreground" : undefined} onClick={() => recordVacate(current.contract.id)}>
+                <LogOut className="size-4" /> <span dir="rtl">تعهد بالإخلاء</span>
+              </Button>
+            )}
             {!current && (
               <Button variant="outline" onClick={() => newContract({ tenantId: tenant.id })}>
                 <FileText className="size-4" /> New contract

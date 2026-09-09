@@ -155,7 +155,7 @@ interface TenantSeed {
   idNumber: string;
 }
 
-function addTenant(opts: Partial<TenantSeed> & { noId?: boolean } = {}): TenantSeed {
+function addTenant(opts: Partial<TenantSeed> & { noId?: boolean; complaint?: { summary: string; date: string } } = {}): TenantSeed {
   const name = opts.first && opts.last ? { first: opts.first, last: opts.last } : makeName();
   const phone = opts.phone ?? makePhone();
   const idType = opts.idType ?? (chance(0.25) ? "passport" : "national_id");
@@ -173,6 +173,8 @@ function addTenant(opts: Partial<TenantSeed> & { noId?: boolean } = {}): TenantS
     emergency_contact_name: chance(0.7) ? `${pick([...MALE, ...FEMALE])} ${name.last}` : "",
     emergency_contact_phone: chance(0.7) ? makePhone() : "",
     notes: "",
+    complaint: opts.complaint?.summary ?? "",
+    complaint_date: opts.complaint?.date ?? "",
   });
   return { ...name, phone, idType, idNumber };
 }
@@ -204,6 +206,10 @@ interface ContractOpts {
   decision?: string;
   proposed?: number;
   renewalNotes?: string;
+  /** تعهد بالإخلاء — signed undertaking to vacate. */
+  vacateSigned?: string;
+  vacateBy?: string;
+  vacateNotes?: string;
 }
 
 function addContract(o: ContractOpts): string {
@@ -229,6 +235,9 @@ function addContract(o: ContractOpts): string {
     renewal_notes: o.renewalNotes ?? "",
     notes: o.notes ?? "",
     payment_pattern: o.pattern ?? "",
+    vacate_undertaking_signed: o.vacateSigned ?? "",
+    vacate_by: o.vacateBy ?? "",
+    vacate_notes: o.vacateNotes ?? "",
   });
   return number;
 }
@@ -358,7 +367,7 @@ function generateBuilding(b: BuildingSpec, opts: { cast: boolean; history: boole
 
   // Cast units are never vacant.
   const reserved = new Set<string>();
-  if (opts.cast && b.code === "BH") ["403", "502"].forEach((u) => reserved.add(u));
+  if (opts.cast && b.code === "BH") ["403", "502", "604"].forEach((u) => reserved.add(u));
   if (opts.cast && b.code === "MR") ["B704"].forEach((u) => reserved.add(u));
 
   const vacantSet = new Set<string>();
@@ -483,13 +492,17 @@ function generateCast() {
   addDocument(nadine.phone, "contract", "Signed contract", `${nadineContract}.pdf`, { contract: nadineContract, issued: "today+45d-12m" });
 
   // Michel Saab — repeat late payer. MR B704, $1,500. Overdue 12d, late 4 of last 6.
-  const michel = addTenant({ first: "Michel", last: "Saab", phone: "+961 70 234 567", idType: "national_id", idNumber: "LB-3390417" });
+  const michel = addTenant({ first: "Michel", last: "Saab", phone: "+961 70 234 567", idType: "national_id", idNumber: "LB-3390417", complaint: { summary: "Disputes the late fees; says the AC repair from July is still pending", date: "today-9d" } });
   const michelContract = addContract({
     code: "MR", unit: "B704", phone: michel.phone, start: "today-7m", end: "today+5m", rent: 1500, paymentDay: "today-12d", method: "cash",
     pattern: "overdue@-12 | late@-42:9 | late@-73:6 | late@-103:11",
   });
   addDocument(michel.phone, "id", "National ID", "michel-saab-id.pdf", { issued: "today-2y", expiry: "today+8y" });
   addDocument(michel.phone, "contract", "Signed contract", `${michelContract}.pdf`, { contract: michelContract, issued: "today-7m" });
+
+  // Ziad Mansour — signed تعهد بالإخلاء. BH 604, $1,075. Leaving in 40 days, contract would have run 2 more months.
+  const ziad = addTenant({ first: "Ziad", last: "Mansour", phone: "+961 71 808 909", idType: "passport", idNumber: "P-4471120" });
+  addContract({ code: "BH", unit: "604", phone: ziad.phone, start: "today-10m", end: "today+2m", rent: 1075, paymentDay: 5, method: "bank_transfer", vacateSigned: "today-5d", vacateBy: "today+40d", vacateNotes: "Relocating to Dubai; keys back on the day, deposit settled after inspection" });
 
   // B304 — the empty chair. Vacant 87 days, previous tenant on record.
   const rami = addTenant({ first: "Rami", last: "Abou Jaoude", phone: "+961 76 555 010" });

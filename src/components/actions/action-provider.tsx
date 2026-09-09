@@ -18,6 +18,7 @@ import { AssignParkingDialog, ParkingSpaceDialog } from "@/components/operations
 import { CompleteRenovationDialog, RenovationDialog, type RenovationPrefill } from "@/components/operations/renovation-dialogs";
 import { DocumentReviewDialog } from "@/components/documents/document-review-dialog";
 import { ContractDialog, PropertyDialog, TenantDialog, UnitDialog, type ContractPrefill, type PropertyPrefill, type TenantPrefill, type UnitPrefill } from "@/components/flows/entity-dialogs";
+import { ComplaintDialog, VacateDialog, type ComplaintPrefill, type VacatePrefill } from "@/components/flows/flag-dialogs";
 import { WorkOrderDialog, WorkOrderStatusDialog, type WorkOrderPrefill } from "@/components/maintenance/work-order-dialogs";
 import { ExpenseDialog, type ExpensePrefill } from "@/components/finance/expense-dialog";
 import { MarkLeavingDialog } from "@/components/flows/mark-leaving-dialog";
@@ -61,6 +62,8 @@ type Flow =
   | { kind: "unit"; unitId?: ID; prefill?: UnitPrefill }
   | { kind: "tenant_record"; tenantId?: ID; prefill?: TenantPrefill }
   | { kind: "contract_new"; prefill?: ContractPrefill }
+  | { kind: "complaint"; tenantId: ID; prefill?: ComplaintPrefill }
+  | { kind: "vacate"; contractId: ID; prefill?: VacatePrefill }
   | null;
 
 export interface ActionsContextValue {
@@ -115,6 +118,10 @@ export interface ActionsContextValue {
   addTenantRecord: (prefill?: TenantPrefill) => void;
   editTenant: (tenantId: ID) => void;
   newContract: (prefill?: ContractPrefill) => void;
+  /** Open, update or resolve the tenant's complaint (red on the grid). */
+  openComplaint: (tenantId: ID, prefill?: ComplaintPrefill) => void;
+  /** تعهد بالإخلاء — record or withdraw the undertaking to vacate (orange on the grid). */
+  recordVacate: (contractId: ID, prefill?: VacatePrefill) => void;
   renewContract: (contractId: ID) => void;
   markAsLeaving: (contractId: ID) => void;
   addTenant: (unitId: ID) => void;
@@ -207,6 +214,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   const addTenantRecord = useCallback((prefill?: TenantPrefill) => setFlow({ kind: "tenant_record", prefill }), []);
   const editTenant = useCallback((tenantId: ID) => setFlow({ kind: "tenant_record", tenantId }), []);
   const newContract = useCallback((prefill?: ContractPrefill) => setFlow({ kind: "contract_new", prefill }), []);
+  const openComplaint = useCallback((tenantId: ID, prefill?: ComplaintPrefill) => setFlow({ kind: "complaint", tenantId, prefill }), []);
+  const recordVacate = useCallback((contractId: ID, prefill?: VacatePrefill) => setFlow({ kind: "vacate", contractId, prefill }), []);
   const renewContract = useCallback((contractId: ID) => setFlow({ kind: "renew", contractId }), []);
   const markAsLeaving = useCallback((contractId: ID) => setFlow({ kind: "leaving", contractId }), []);
   const addTenant = useCallback((unitId: ID) => setFlow({ kind: "add_tenant", unitId }), []);
@@ -289,6 +298,10 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return addTenantRecord(action.payload as TenantPrefill | undefined);
         case "create_contract":
           return newContract(action.payload as ContractPrefill | undefined);
+        case "open_complaint":
+          return openComplaint(action.targetId, action.payload as ComplaintPrefill | undefined);
+        case "record_vacate":
+          return recordVacate(action.targetId, action.payload as VacatePrefill | undefined);
         case "create_expense":
           return addExpense((action.payload ?? {}) as ExpensePrefill);
         case "create_asset":
@@ -364,12 +377,12 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
           return;
       }
     },
-    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, editPlan, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, addProperty, addUnit, addTenantRecord, newContract, addExpense, addAsset, addSupplier, router, store, run],
+    [recordPayment, sendReminder, renewContract, markAsLeaving, openUnit, openTenant, openProperty, openContract, uploadDocument, editExpense, openDeposit, openWorkOrder, workOrderStatus, createWorkOrder, openAsset, logService, editPlan, openSupplier, openInspection, scheduleInspection, openRenovation, createReminder, addProperty, addUnit, addTenantRecord, newContract, openComplaint, recordVacate, addExpense, addAsset, addSupplier, router, store, run],
   );
 
   const value = useMemo<ActionsContextValue>(
-    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, addProperty, editProperty, addUnit, editUnit, addTenantRecord, editTenant, newContract, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
-    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, addProperty, editProperty, addUnit, editUnit, addTenantRecord, editTenant, newContract, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
+    () => ({ perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, addProperty, editProperty, addUnit, editUnit, addTenantRecord, editTenant, newContract, openComplaint, recordVacate, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument }),
+    [perform, openUnit, openUnitHere, openUnitPage, openTenant, openProperty, openContract, recordPayment, openPayment, addExpense, editExpense, openDeposit, createWorkOrder, editWorkOrder, openWorkOrder, workOrderStatus, openAsset, addAsset, editAsset, addPlan, editPlan, logService, openSupplier, addSupplier, editSupplier, openInspection, scheduleInspection, completeInspection, addKey, editKey, issueKey, addParking, editParking, assignParking, openRenovation, createRenovation, editRenovation, completeRenovation, reviewDocument, addProperty, editProperty, addUnit, editUnit, addTenantRecord, editTenant, newContract, openComplaint, recordVacate, renewContract, markAsLeaving, addTenant, renewalDecision, editContractTerms, createReminder, sendReminder, uploadDocument],
   );
 
   return (
@@ -395,6 +408,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
       {flow?.kind === "unit" && <UnitDialog key={flow.unitId ?? "new"} unitId={flow.unitId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/units/${id}`)} />}
       {flow?.kind === "tenant_record" && <TenantDialog key={flow.tenantId ?? "new"} tenantId={flow.tenantId} prefill={flow.prefill} onClose={closeFlow} onCreated={(id) => router.push(`/tenants/${id}`)} onContract={(p) => setFlow({ kind: "contract_new", prefill: p })} />}
       {flow?.kind === "contract_new" && <ContractDialog prefill={flow.prefill} onClose={closeFlow} />}
+      {flow?.kind === "complaint" && <ComplaintDialog key={flow.tenantId} tenantId={flow.tenantId} prefill={flow.prefill} onClose={closeFlow} />}
+      {flow?.kind === "vacate" && <VacateDialog key={flow.contractId} contractId={flow.contractId} prefill={flow.prefill} onClose={closeFlow} />}
       {flow?.kind === "document_review" && <DocumentReviewDialog key={flow.documentId} documentId={flow.documentId} onClose={closeFlow} />}
       {flow?.kind === "renovation_complete" && <CompleteRenovationDialog key={flow.renovationId} renovationId={flow.renovationId} onClose={closeFlow} />}
       {flow?.kind === "assign_parking" && <AssignParkingDialog key={flow.spaceId} spaceId={flow.spaceId} onClose={closeFlow} />}

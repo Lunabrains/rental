@@ -112,6 +112,19 @@ export interface Unit {
 
 export type IdDocumentType = "national_id" | "passport" | "residency_permit";
 
+/** An open dispute between the manager and the tenant — the red square on the building grid. */
+export interface TenantComplaint {
+  openedOn: ISODate;
+  summary: string;
+}
+
+/** تعهد بالإخلاء — the tenant signed an undertaking to vacate by a date; orange on the grid. */
+export interface VacateUndertaking {
+  signedOn: ISODate;
+  vacateBy: ISODate;
+  notes: string | null;
+}
+
 export interface Tenant {
   id: ID;
   firstName: string;
@@ -127,6 +140,8 @@ export interface Tenant {
   emergencyContactName: string | null;
   emergencyContactPhone: string | null;
   notes: string | null;
+  /** Open complaint, if any — red on the grid until resolved. */
+  complaint?: TenantComplaint | null;
   createdAt: ISODate;
 }
 
@@ -191,6 +206,8 @@ export interface Contract {
   proposedRent: number | null;
   renewalNotes: string | null;
   notes: string | null;
+  /** تعهد بالإخلاء — signed undertaking to vacate; orange on the grid while it stands. */
+  vacateUndertaking?: VacateUndertaking | null;
   createdAt: ISODate;
 }
 
@@ -932,7 +949,9 @@ export type AlertActionKind =
   | "create_contract"
   | "create_asset"
   | "create_expense"
-  | "create_supplier";
+  | "create_supplier"
+  | "open_complaint"
+  | "record_vacate";
 
 export interface AlertAction {
   kind: AlertActionKind;
@@ -1015,6 +1034,10 @@ export type ActivityType =
   | "property_added"
   | "property_updated"
   | "contract_created"
+  | "complaint_opened"
+  | "complaint_resolved"
+  | "vacate_undertaking_recorded"
+  | "vacate_undertaking_cleared"
   | "unit_became_available"
   | "document_added"
   | "document_deleted"

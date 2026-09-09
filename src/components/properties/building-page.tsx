@@ -16,7 +16,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUnitDrawerParams } from "@/components/units/use-unit-drawer";
 import { useStore } from "@/lib/data/store-context";
 import { buildingHealth } from "@/lib/derived/metrics";
-import { getPropertyDetails, getUnitsByProperty } from "@/lib/queries";
+import { cellMatches, getPropertyDetails, getUnitsByProperty  } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { featureOn, type FeatureKey } from "@/lib/features";
 
@@ -87,7 +87,7 @@ export function BuildingPage({ propertyId }: { propertyId: string }) {
   }, [query, floors]);
 
   const visibleFloors = useMemo(
-    () => floors.map((f) => ({ ...f, units: status === "rented" ? f.units.filter((c) => c.unit.status === "rented") : f.units })),
+    () => floors.map((f) => ({ ...f, units: status === "all" ? f.units : f.units.filter((c) => cellMatches(c, status)) })),
     [floors, status],
   );
 
@@ -149,10 +149,10 @@ export function BuildingPage({ propertyId }: { propertyId: string }) {
           </div>
           {layout === "grid" ? (
             <UnitGrid
-              floors={visibleFloors}
+              floors={floors}
               selectedUnitId={drawer.unitId}
               highlightIds={highlightIds}
-              dimRented={status === "available"}
+              filter={status}
               floorFilter={floor}
               onSelect={(id) => drawer.open(id)}
             />

@@ -16,7 +16,7 @@ import { featureOn } from "@/lib/features";
  * prefilled with what it understood, and the owner saves it.
  */
 
-export type EntryKind = "building" | "unit" | "tenant" | "contract" | "asset" | "expense" | "supplier";
+export type EntryKind = "building" | "unit" | "tenant" | "contract" | "asset" | "expense" | "supplier" | "complaint" | "vacate";
 
 export interface EntryContext {
   property: Property | null;
@@ -25,6 +25,8 @@ export interface EntryContext {
 
 const VERB = /^(?:please\s+|can you\s+|could you\s+|i want to\s+|i'd like to\s+|i need to\s+|let'?s\s+)?(?:add|create|register|enter|insert|set ?up|make|new|log|record|open|sign|put)\b/;
 const NOUN: [EntryKind, RegExp][] = [
+  ["complaint", /\b(complaints?|disputes?)\b/],
+  ["vacate", /\b(vacate|undertaking|evict\w*|move[- ]?out agreement)\b/],
   ["contract", /\b(contract|lease|agreement|tenancy)\b/],
   ["tenant", /\b(tenant|renter|lessee|occupant)\b/],
   ["unit", /\b(unit|apartment|flat|studio|apt)\b/],
@@ -269,12 +271,12 @@ export function entryIntent(raw: string, q: string, store: Store, ctx: EntryCont
   const idx = indexStore(store);
   const rows: [string, string][] = [];
   const notes: string[] = [];
-  const local = (payload: Record<string, unknown>, actionKind: AnswerAction["kind"], suggestions: string[] = []): AssistantAnswer => ({
+  const local = (payload: Record<string, unknown>, actionKind: AnswerAction["kind"], targetId = "new", suggestions: string[] = []): AssistantAnswer => ({
     source: "local",
     lang,
     text: v.entryPrepared(v.entryWhat[kind]) + notes.join(""),
     table: rows.length > 0 ? { columns: [f.field, f.value], rows } : undefined,
-    actions: [{ kind: actionKind, label: v.labels.openForm, targetId: "new", payload }],
+    actions: [{ kind: actionKind, label: v.labels.openForm, targetId, payload }],
     autoOpen: true,
     suggestions,
   });
@@ -282,6 +284,30 @@ export function entryIntent(raw: string, q: string, store: Store, ctx: EntryCont
     if (value === null || value === undefined || value === "") return;
     rows.push([label, String(value)]);
   };
+
+  if (kind === "complaint" || kind === "vacate") {
+    const { tenant } = resolveTenant(store, raw, ctx.tenant);
+    const { property } = resolveProperty(store, raw, ctx.property);
+    const { unit } = unitIn(d, property, store);
+    const contract = unit ? ((idx.contractsByUnit.get(unit.id) ?? []).find(isOccupying) ?? null) : tenant ? (store.contracts.find((c) => c.tenantId === tenant.id && isOccupying(c)) ?? null) : null;
+    const who = tenant ?? (contract ? (idx.tenantById.get(contract.tenantId) ?? null) : null);
+    const place = contract ? `${idx.propertyById.get(contract.propertyId)?.name ?? ""} ${idx.unitById.get(contract.unitId)?.unitNumber ?? ""}`.trim() : null;
+    if (kind === "complaint") {
+      if (!who) return { source: "local", lang, text: v.entryNeedsTenant };
+      const m = /\b(?:about|regarding|because|saying|says|that|concerning)\b\s*:?\s*(.+)$/i.exec(raw);
+      const summary = m ? m[1].trim().replace(/[.。]$/, "") : "";
+      put(f.tenant, who.fullName);
+      put(f.unit, place);
+      put(f.summary, summary || null);
+      return local({ summary: summary || undefined }, "open_complaint", who.id);
+    }
+    if (!contract) return { source: "local", lang, text: v.entryNeedsTenant };
+    const by = dateIn(d.replace(/\b(?:by|until|till|before)\b/g, "on"), base);
+    put(f.tenant, who?.fullName);
+    put(f.unit, place);
+    put(f.by, by ? s.date(by) : null);
+    return local({ vacateBy: by ?? undefined }, "record_vacate", contract.id);
+  }
 
   if (kind === "building") {
     const name = capturedName(raw, /\b(?:named|called|name it|name is|titled|by the name of)\b\s*:?\s*/i) ?? capturedName(raw, /\b(?:building|property|tower|block)\b\s*:?\s*/i);

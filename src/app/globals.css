@@ -70,6 +70,12 @@
   --color-unit-rented: var(--unit-rented);
   --color-unit-rented-border: var(--unit-rented-border);
   --color-unit-rented-foreground: var(--unit-rented-foreground);
+  --color-unit-complaint: var(--unit-complaint);
+  --color-unit-complaint-border: var(--unit-complaint-border);
+  --color-unit-complaint-foreground: var(--unit-complaint-foreground);
+  --color-unit-vacating: var(--unit-vacating);
+  --color-unit-vacating-border: var(--unit-vacating-border);
+  --color-unit-vacating-foreground: var(--unit-vacating-foreground);
   --color-grid-panel: var(--grid-panel);
 
   --radius-sm: calc(var(--radius) * 0.6);
@@ -128,9 +134,16 @@
   --unit-available: oklch(1 0 0);
   --unit-available-border: oklch(0.828 0.004 286);
   --unit-available-foreground: oklch(0.32 0.005 286);
-  --unit-rented: oklch(0.559 0.208 26.5);
-  --unit-rented-border: oklch(0.5 0.19 26.5);
-  --unit-rented-foreground: oklch(0.995 0.004 25);
+  /* Grid colours: white = available, green = rented, red = complaint, orange = تعهد بالإخلاء */
+  --unit-rented: oklch(0.6 0.16 148);
+  --unit-rented-border: oklch(0.52 0.15 148);
+  --unit-rented-foreground: oklch(0.995 0.004 150);
+  --unit-complaint: oklch(0.559 0.208 26.5);
+  --unit-complaint-border: oklch(0.5 0.19 26.5);
+  --unit-complaint-foreground: oklch(0.995 0.004 25);
+  --unit-vacating: oklch(0.72 0.17 60);
+  --unit-vacating-border: oklch(0.64 0.17 58);
+  --unit-vacating-foreground: oklch(0.2 0.03 60);
   --grid-panel: oklch(0.924 0.003 286);
 
   /* Charts: brand red leads, blue second (pair validated for CVD), neutrals follow */

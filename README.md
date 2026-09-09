@@ -37,6 +37,10 @@ enters operating results.
 - **Operations** — inspections from checklist templates, move-in / move-out checklists that tie
   together the condition report, keys, closing readings and the deposit, keys and parking registers,
   renovation / CapEx projects with return estimates.
+- **Building grid colours** — white available, green rented, red an open complaint with the tenant,
+  orange تعهد بالإخلاء (the tenant signed an undertaking to vacate). The key sits on top of the grid,
+  the toolbar filters by colour, and both flags are set from the tenant page, the unit drawer, the
+  importer or the assistant ("open a complaint for Karim about the AC").
 - **Simple edition** — the sidebar is deliberately short: Dashboard, Daily briefing, Properties,
   Assets, Tenants, Contracts, Alerts, Rent roll, Payments, Expenses, AI assistant, Import, Settings.
   Budgets, deposits, utilities, common charges, cash flow, work orders, preventive maintenance,

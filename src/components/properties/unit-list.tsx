@@ -46,7 +46,18 @@ export function UnitList({ propertyId, floors, highlightIds, floorFilter, status
     { key: "unit", header: "Unit", cell: (r) => <span className="font-medium">{r.cell.unit.unitNumber}</span>, value: (r) => r.cell.unit.unitNumber },
     { key: "floor", header: "Floor", cell: (r) => r.cell.unit.floor, value: (r) => r.cell.unit.floor },
     { key: "layout", header: "Layout", cell: (r) => `${r.cell.unit.bedrooms} BR · ${r.cell.unit.sizeSqm} m²`, value: (r) => r.cell.unit.bedrooms },
-    { key: "status", header: "Status", cell: (r) => <UnitStatusBadge status={r.cell.unit.status} />, value: (r) => r.cell.unit.status },
+    {
+      key: "status",
+      header: "Status",
+      cell: (r) => (
+        <span className="flex flex-wrap items-center gap-1">
+          <UnitStatusBadge status={r.cell.unit.status} />
+          {r.cell.complaint && <span className="rounded border border-unit-complaint-border bg-unit-complaint px-1.5 text-[10px] font-medium text-unit-complaint-foreground">complaint</span>}
+          {r.cell.vacate && <span dir="rtl" className="rounded border border-unit-vacating-border bg-unit-vacating px-1.5 text-[10px] font-medium text-unit-vacating-foreground">تعهد بالإخلاء</span>}
+        </span>
+      ),
+      value: (r) => r.cell.state,
+    },
     { key: "tenant", header: "Tenant", cell: (r) => r.cell.tenant?.fullName ?? <span className="text-muted-foreground">{r.cell.daysVacant !== null ? `vacant ${r.cell.daysVacant}d` : "—"}</span>, value: (r) => r.cell.tenant?.fullName ?? "" },
     { key: "rent", header: "Rent", align: "right", cell: (r) => (r.cell.contract ? formatMoney(r.cell.contract.monthlyRent) : <span className="text-muted-foreground">asking {formatMoney(r.cell.unit.askingRent)}</span>), value: (r) => r.rent },
     { key: "expiry", header: "Contract ends", cell: (r) => (r.cell.contract ? <span className={cn(r.cell.expiringInDays !== null && r.cell.expiringInDays <= 30 && "text-warning-foreground")}>{formatDate(r.cell.contract.endDate)}{r.cell.expiringInDays !== null ? ` · ${r.cell.expiringInDays}d` : ""}</span> : "—"), value: (r) => r.cell.contract?.endDate ?? null },

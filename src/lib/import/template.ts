@@ -168,6 +168,8 @@ export const COLUMNS: Record<ImportEntity, ColumnSpec[]> = {
     { key: "occupation", label: "occupation", type: "text", description: "Occupation." },
     { key: "emergency_contact_name", label: "emergency_contact_name", type: "text", description: "Emergency contact." },
     { key: "emergency_contact_phone", label: "emergency_contact_phone", type: "text", description: "Emergency contact phone." },
+    col("complaint", "text", "Open complaint (dispute) with the tenant — the unit shows red on the building grid until it is resolved."),
+    col("complaint_date", "date", "When the complaint was opened. Defaults to the import date."),
     { key: "notes", label: "notes", type: "text", description: "Free text." },
   ],
   contracts: [
@@ -189,6 +191,9 @@ export const COLUMNS: Record<ImportEntity, ColumnSpec[]> = {
     col("renewal_decision", "enum", "awaiting_decision / renew / do_not_renew (blank = no decision yet).", { values: ["", "awaiting_decision", "renew", "do_not_renew"] }),
     col("proposed_rent", "number", "Rent proposed for the renewal."),
     col("renewal_notes", "text", "Renewal negotiation notes."),
+    col("vacate_undertaking_signed", "date", "تعهد بالإخلاء — the date the tenant signed an undertaking to vacate."),
+    col("vacate_by", "date", "The date the tenant agreed to vacate by — the unit shows orange on the grid while it stands."),
+    col("vacate_notes", "text", "Notes on the undertaking."),
     { key: "notes", label: "notes", type: "text", description: "Free text." },
     { key: "payment_pattern", label: "payment_pattern", type: "text", description: "Demo only: scripts the generated payment history, e.g. overdue@-8 | late@-150:5 | partial@-12:800. Leave blank for on-time history." },
   ],

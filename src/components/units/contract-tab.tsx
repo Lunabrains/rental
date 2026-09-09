@@ -14,7 +14,7 @@ import type { StoredDocument } from "@/types";
 import { featureOn } from "@/lib/features";
 
 export function ContractTab({ details, onPreview }: { details: UnitDetails; onPreview: (doc: StoredDocument) => void }) {
-  const { renewContract, markAsLeaving, editContractTerms, renewalDecision } = useActions();
+  const { renewContract, markAsLeaving, editContractTerms, renewalDecision, recordVacate } = useActions();
   const c = details.contract;
   if (!c) return null;
 
@@ -60,6 +60,7 @@ export function ContractTab({ details, onPreview }: { details: UnitDetails; onPr
         <Field label="Payment day">{ordinal(c.paymentDay)} of the month</Field>
         <Field label="Method">{labelize(c.paymentMethod)}</Field>
         <Field label="Move-out">{c.moveOutDate ? formatDate(c.moveOutDate) : "—"}</Field>
+        {c.vacateUndertaking && <Field label="تعهد بالإخلاء">{`Vacate by ${formatDate(c.vacateUndertaking.vacateBy)} · signed ${formatDate(c.vacateUndertaking.signedOn)}`}</Field>}
       </dl>
 
       {featureOn("documents") && (
@@ -112,6 +113,10 @@ export function ContractTab({ details, onPreview }: { details: UnitDetails; onPr
         </Button>
         <Button variant="outline" onClick={() => markAsLeaving(c.id)}>
           <LogOut className="size-4" /> Mark as leaving
+        </Button>
+        <Button variant="outline" className={c.vacateUndertaking ? "border-unit-vacating-border bg-unit-vacating text-unit-vacating-foreground hover:bg-unit-vacating/90 hover:text-unit-vacating-foreground" : undefined} onClick={() => recordVacate(c.id)}>
+          <span dir="rtl">تعهد بالإخلاء</span>
+          {c.vacateUndertaking && <span className="tabular text-xs">· {formatDate(c.vacateUndertaking.vacateBy)}</span>}
         </Button>
         <Button variant="outline" onClick={() => renewalDecision(c.id)}>
           Renewal decision
