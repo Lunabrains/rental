@@ -13,6 +13,7 @@ import { isOpenWorkOrder, outstandingRent } from "@/lib/derived/metrics";
 import { formatDate, formatMoney } from "@/lib/format";
 import type { FloorRow, UnitCell } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+import { featureOn } from "@/lib/features";
 
 interface UnitListRow {
   cell: UnitCell;
@@ -55,5 +56,5 @@ export function UnitList({ propertyId, floors, highlightIds, floorFilter, status
     { key: "open", header: "", cell: (r) => <button type="button" className="text-xs font-medium text-brand hover:underline" onClick={(e) => { e.stopPropagation(); openUnitPage(r.cell.unit.id); }}>360°</button>, sortable: false, noExport: true },
   ];
 
-  return <DataTable rows={rows} columns={columns} rowKey={(r) => r.cell.unit.id} onRowClick={(r) => onSelect(r.cell.unit.id)} defaultSort={{ key: "unit", dir: "asc" }} pageSize={60} exportName={`units-${propertyId}`} emptyTitle="No units match" dense />;
+  return <DataTable rows={rows} columns={columns.filter((c) => c.key !== "maintenance" || featureOn("maintenance"))} rowKey={(r) => r.cell.unit.id} onRowClick={(r) => onSelect(r.cell.unit.id)} defaultSort={{ key: "unit", dir: "asc" }} pageSize={60} exportName={`units-${propertyId}`} emptyTitle="No units match" dense />;
 }

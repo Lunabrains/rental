@@ -1,4 +1,5 @@
 import type { AlertCategory, AlertSeverity, AlertThresholds, AlertType } from "@/types";
+import { featureOn } from "@/lib/features";
 
 export type ThresholdKey = keyof AlertThresholds;
 export type ThresholdUnit = "days" | "$" | "%" | "count" | "months" | "×";
@@ -85,11 +86,11 @@ export const ALERT_RULES: Record<AlertType, AlertRule> = {
   maintenance_awaiting_approval: rule("maintenance_awaiting_approval", "Awaiting approval", "A quote is waiting for the owner's approval.", "maintenance", "attention"),
   preventive_service_due: rule("preventive_service_due", "Service due soon", "A preventive service falls due within the window.", "preventive", "info", ["serviceDueSoonDays"]),
   preventive_service_overdue: rule("preventive_service_overdue", "Service overdue", "A preventive service is past its due date.", "preventive", "warning"),
-  asset_warranty_expiring: rule("asset_warranty_expiring", "Warranty expiring", "An asset's warranty ends soon.", "preventive", "info", ["warrantyExpiringDays"]),
-  asset_out_of_service: rule("asset_out_of_service", "Asset out of service", "Critical equipment is down.", "maintenance", "critical"),
+  asset_warranty_expiring: rule("asset_warranty_expiring", "Warranty expiring", "An asset's warranty ends soon.", "asset", "info", ["warrantyExpiringDays"]),
+  asset_out_of_service: rule("asset_out_of_service", "Asset out of service", "Critical equipment is down.", "asset", "critical"),
   budget_over: rule("budget_over", "Over budget", "Actual spend exceeds the budget line by the allowed share.", "finance", "warning", ["budgetOverPct"]),
   expense_unusual: rule("expense_unusual", "Unusual expense", "An expense is far above the category's usual amount.", "finance", "attention", ["expenseUnusualMultiplier"]),
-  expense_overdue: rule("expense_overdue", "Supplier invoice overdue", "An unpaid expense is past its due date.", "finance", "warning"),
+  expense_overdue: rule("expense_overdue", "Invoice overdue", "An unpaid expense is past its due date.", "finance", "warning"),
   noi_deteriorating: rule("noi_deteriorating", "NOI deteriorating", "Net operating income is trending down.", "finance", "attention"),
   deposit_unsettled: rule("deposit_unsettled", "Deposit not settled", "The tenancy ended but the deposit was not refunded or closed.", "finance", "warning"),
   deposit_not_received: rule("deposit_not_received", "Deposit not received", "A contract started without its deposit being collected.", "finance", "warning"),
@@ -109,13 +110,14 @@ export const CATEGORY_LABELS: Record<AlertCategory, string> = {
   payment: "Payments",
   contract: "Contracts & renewals",
   occupancy: "Occupancy",
-  document: "Documents & compliance",
+  document: featureOn("documents") ? "Documents & compliance" : "Compliance",
   portfolio: "Portfolio",
   maintenance: "Maintenance",
   preventive: "Preventive & assets",
   finance: "Finance",
   inspection: "Inspections, moves & keys",
   reminder: "Reminders",
+  asset: "Assets",
 };
 
 export function rulesByCategory(): { category: AlertCategory; rules: AlertRule[] }[] {

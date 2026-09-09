@@ -34,7 +34,7 @@ import { formatDate, formatMoney, formatMonth, formatPercent, initials, labelize
 import { getTenant360, type ContractRow, type Tenant360 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { Payment, StoredDocument } from "@/types";
-import { featureOn, type FeatureKey } from "@/lib/features";
+import { featureOn, timelineKindVisible, type FeatureKey } from "@/lib/features";
 
 type Tab = "overview" | "payments" | "contracts" | "maintenance" | "documents" | "notes" | "timeline";
 const ALL_TABS: { key: Tab; label: string; feature?: FeatureKey }[] = [
@@ -360,8 +360,8 @@ export function TenantPage({ tenantId }: { tenantId: string }) {
       {tab === "notes" && <NotesTab t={t} />}
 
       {tab === "timeline" && (
-        <SectionCard title="Timeline" description={`${t.timeline.length} events · newest first`}>
-          <Timeline events={t.timeline} limit={100} />
+        <SectionCard title="Timeline" description={`${t.timeline.filter((e) => timelineKindVisible(e.kind)).length} events · newest first`}>
+          <Timeline events={t.timeline.filter((e) => timelineKindVisible(e.kind))} limit={100} />
         </SectionCard>
       )}
 

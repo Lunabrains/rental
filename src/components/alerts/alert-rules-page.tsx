@@ -68,7 +68,7 @@ export function AlertRulesPage() {
         }
       />
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Rules" value={ALERT_TYPES.length} sublabel={`${activeRules} raising something right now`} />
+        <KpiCard label="Rules" value={ALERT_TYPES.filter(alertTypeVisible).length} sublabel={`${activeRules} raising something right now`} />
         <KpiCard label="Muted" value={muted.size} tone={muted.size > 0 ? "warning" : "default"} sublabel={muted.size > 0 ? [...muted].map((t) => t.replace(/_/g, " ")).slice(0, 3).join(", ") : "Every rule is live"} />
         <KpiCard label="Open alerts" value={store.alerts.filter((a) => !a.dismissed && !a.resolved).length} sublabel={`${store.alerts.filter((a) => !a.dismissed && !a.resolved && a.severity === "critical").length} critical`} href="/alerts" />
         <KpiCard label="Unsaved changes" value={dirtyKeys.length} tone={dirtyKeys.length > 0 ? "warning" : "default"} sublabel={dirtyKeys.length > 0 ? "Apply to recompute" : "Thresholds match the live rules"} />

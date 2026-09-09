@@ -2,6 +2,7 @@ import { addPeriods, daysBetween, lastPeriods, periodOf, today } from "@/lib/dat
 import type { Budget, Expense, ISODate, Payment, PeriodMonth, Store, Unit, WorkOrder } from "@/types";
 
 import { isOccupying, occupyingAt } from "./occupancy";
+import { featureOn, type FeatureKey } from "@/lib/features";
 
 /**
  * The shared formulas (plan §5–§8). Dashboard, reports, alerts and the AI
@@ -348,14 +349,14 @@ export function buildingHealth(store: Store, propertyId: string, base: ISODate =
   const insuranceLapsing = property?.insuranceExpiry ? daysBetween(base, property.insuranceExpiry) <= t.insuranceExpiringDays : false;
   const complianceScore = clamp100(100 - undecided * 10 - expiredOccupied * 25 - (insuranceLapsing ? 20 : 0));
 
-  return combineHealth([
+  return combineHealth(visibleComponents([
     { key: "collections", label: "Rent collection", weight: 25, score: Math.round(collection * 100), detail: rates.length > 0 ? `${Math.round(collection * 100)}% of rent due in the last 3 months collected` : "no rent due yet" },
     { key: "occupancy", label: "Occupancy", weight: 20, score: Math.round(occupancyScore), detail: `${occ.occupied} of ${occ.rentable} rentable units occupied (${Math.round(occ.rate * 100)}%)` },
     { key: "profitability", label: "Profitability", weight: 20, score: profitability, detail: `NOI margin ${Math.round(noiNow.margin * 100)}% this month${avgPrev > 0 ? `, ${noiNow.noi >= avgPrev ? "up" : "down"} vs the 3-month average` : ""}` },
     { key: "maintenance", label: "Maintenance", weight: 15, score: Math.round(maintenanceScore), detail: `${open.length} open work order${open.length === 1 ? "" : "s"}${emergencies > 0 ? `, ${emergencies} emergency` : ""}${overduePlans > 0 ? `, ${overduePlans} overdue service${overduePlans === 1 ? "" : "s"}` : ""}${brokenAssets > 0 ? `, ${brokenAssets} asset${brokenAssets === 1 ? "" : "s"} out of service` : ""}` },
     { key: "budget", label: "Budget control", weight: 10, score: Math.round(budgetScore), detail: budgets.length === 0 ? "no budget set" : over === 0 ? "every category within budget" : `${over} of ${budgets.length} categories over budget` },
     { key: "compliance", label: "Contracts & compliance", weight: 10, score: Math.round(complianceScore), detail: `${undecided} expiring contract${undecided === 1 ? "" : "s"} without a decision${expiredOccupied > 0 ? `, ${expiredOccupied} expired but occupied` : ""}${insuranceLapsing ? ", insurance expiring" : ""}` },
-  ]);
+  ]));
 }
 
 /* --------------------------------- §8 ------------------------------------ */
@@ -401,14 +402,22 @@ export function unitHealth(store: Store, unitId: string, base: ISODate = today()
   const renovationOpen = store.renovations.some((r) => r.unitId === unitId && (r.status === "planned" || r.status === "in_progress" || r.status === "on_hold"));
   const renovationScore = unit.status === "renovation" ? 40 : renovationOpen ? 55 : unit.condition === "poor" ? 30 : 100;
 
-  return combineHealth([
+  return combineHealth(visibleComponents([
     { key: "cost", label: "Maintenance cost trend", weight: 20, score: Math.round(costScore), detail: priorSpend > 0 ? `$${Math.round(recentSpend)} in the last 6 months vs $${Math.round(priorSpend)} before` : recentSpend > 0 ? `$${Math.round(recentSpend)} spent in the last 6 months` : "no maintenance spend recorded" },
     { key: "repeats", label: "Repeated issues", weight: 20, score: Math.round(repeatScore), detail: repeats > 0 ? `${repeats} category${repeats === 1 ? "" : "ies"} with ${t.repeatIssueMinCount}+ work orders in ${t.repeatIssueWindowDays} days` : `${recentOrders.length} work order${recentOrders.length === 1 ? "" : "s"} in the last ${t.repeatIssueWindowDays} days` },
     { key: "condition", label: "Condition & inspection", weight: 20, score: Math.round(conditionScore), detail: `${unit.condition.replace("_", " ")}${lastInspection ? ` · last inspection ${lastInspection.overallResult ?? "completed"} on ${lastInspection.completedDate}` : " · no completed inspection"}` },
     { key: "vacancy", label: "Vacancy", weight: 15, score: Math.round(vacancyScore), detail: unit.status === "available" ? `vacant ${vacancy.daysVacant} days · est. $${vacancy.loss} lost` : "occupied" },
     { key: "payments", label: "Current tenancy payments", weight: 15, score: Math.round(paymentScore), detail: current ? `${unpaid.length} unpaid, ${lateCount} late in this tenancy` : "no current tenancy" },
     { key: "renovation", label: "Renovation need", weight: 10, score: renovationScore, detail: unit.status === "renovation" ? "under renovation" : renovationOpen ? "renovation project open" : unit.condition === "poor" ? "condition poor — consider renovation" : "none flagged" },
-  ]);
+  ]));
+}
+
+/** Health components of sections switched off in this edition are left out (weights renormalise). */
+function visibleComponents<C extends { key: string; label: string; detail: string }>(components: C[]): C[] {
+  const FEATURE: Record<string, FeatureKey> = { maintenance: "maintenance", budget: "budgets", repeats: "maintenance", renovation: "renovations" };
+  return components
+    .filter((c) => !FEATURE[c.key] || featureOn(FEATURE[c.key]))
+    .map((c) => (c.key === "condition" && !featureOn("inspections") ? { ...c, label: "Condition", detail: c.detail.split(" · last inspection")[0] } : c));
 }
 
 /* ---------------------------- Maintenance helpers ------------------------ */

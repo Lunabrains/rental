@@ -35,6 +35,7 @@ import {
   type WorkbookScan,
 } from "@/lib/import";
 import { cn } from "@/lib/utils";
+import { featureOn } from "@/lib/features";
 
 type Step = "upload" | "map" | "review" | "done";
 
@@ -183,7 +184,7 @@ export function ImportPage() {
     <div className="space-y-6">
       <PageHeader
         title="Import data"
-        description="Bring in your existing records — buildings, units, tenants, contracts, suppliers, assets, expenses and more — from the template or from the spreadsheets you already keep. Preview first; nothing is written until you confirm."
+        description={`Bring in your existing records — ${["buildings", "units", "tenants", "contracts", featureOn("suppliers") && "suppliers", "assets", "expenses"].filter(Boolean).join(", ")} and more — from the template or from the spreadsheets you already keep. Preview first; nothing is written until you confirm.`}
         crumbs={section ? [{ label: section.label, href: section.back }, { label: "Import" }] : [{ label: "Settings", href: "/settings" }, { label: "Import" }]}
         actions={
           <Button variant="outline" onClick={() => downloadArrayBuffer(workbookToArrayBuffer(buildTemplateWorkbook()), "rental-import-template.xlsx")}>
@@ -201,7 +202,7 @@ export function ImportPage() {
             <div className="mb-3 flex items-start gap-2 rounded-md bg-brand-muted/70 px-3 py-2 text-xs">
               <Info className="mt-0.5 size-3.5 shrink-0 text-brand" />
               <span>
-                <span className="font-medium">Importing {section.label.toLowerCase()}.</span> {section.hint} Expected tabs: {section.entities.map((e) => SHEET_NAMES[e]).join(", ")} — other tabs in the file are imported too.
+                <span className="font-medium">Importing {section.label.toLowerCase()}.</span> {section.hint} Expected tabs: {section.entities.filter((e) => e !== "plans" || featureOn("maintenance")).map((e) => SHEET_NAMES[e]).join(", ")} — other tabs in the file are imported too.
               </span>
             </div>
           )}

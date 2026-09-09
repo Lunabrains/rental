@@ -809,7 +809,8 @@ export type AlertCategory =
   | "preventive"
   | "finance"
   | "inspection"
-  | "reminder";
+  | "reminder"
+  | "asset";
 
 export const ALERT_CATEGORIES: AlertCategory[] = [
   "payment",
@@ -822,6 +823,7 @@ export const ALERT_CATEGORIES: AlertCategory[] = [
   "finance",
   "inspection",
   "reminder",
+  "asset",
 ];
 
 /** One id per rule. */

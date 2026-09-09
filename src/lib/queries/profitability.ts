@@ -192,7 +192,7 @@ export function getUnitProfitability(store: Store, unitId: ID, window: Profitabi
       { label: "Rent billed", amount: rentBilled, tone: "income" },
       { label: "Rent collected", amount: rentCollected, tone: "income" },
       { label: "Operating expenses attributed", amount: -operatingExpenses, tone: "cost" },
-      { label: "Maintenance (work orders without invoices)", amount: -maintenanceCost, tone: "cost" },
+      { label: "Maintenance cost", amount: -maintenanceCost, tone: "cost" },
       { label: "Renovation / CapEx (excluded from net)", amount: -capex, tone: "capex" },
       { label: `Vacancy loss estimate (${vacancyDays} days)`, amount: -vacancyLossAmount, tone: "estimate" },
     ],

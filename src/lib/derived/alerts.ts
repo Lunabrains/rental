@@ -674,7 +674,7 @@ export function computeAlertSets(store: Store, base: ISODate): { alerts: Alert[]
       out.push(
         candidate({
           type: "asset_out_of_service",
-          category: "maintenance",
+          category: "asset",
           severity: critical ? "critical" : "warning",
           entityType: "asset",
           entityId: asset.id,
@@ -692,7 +692,7 @@ export function computeAlertSets(store: Store, base: ISODate): { alerts: Alert[]
         out.push(
           candidate({
             type: "asset_warranty_expiring",
-            category: "preventive",
+            category: "asset",
             severity: inDays < 0 ? "attention" : "info",
             entityType: "asset",
             entityId: asset.id,

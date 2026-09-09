@@ -6,7 +6,7 @@ import { isOccupying } from "@/lib/derived/occupancy";
 import { formatDate, formatMoney, formatPercent, labelize } from "@/lib/format";
 import { getCashFlowForecast, getDeposits, getExpiringContracts, getInspections, getMoves, getOverduePayments, getPortfolioOverview, getPreventivePlans, getRenovations, getUpcomingPayments, getWorkOrders } from "@/lib/queries";
 import type { AlertAction, AlertSeverity, ISODate, Store } from "@/types";
-import { briefingItemVisible, featureOn } from "@/lib/features";
+import { actionVisible, briefingItemVisible, featureOn } from "@/lib/features";
 
 export type BriefingTone = AlertSeverity | "success" | "neutral";
 
@@ -167,18 +167,21 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
 
   /* ------------------------------- Narrative ------------------------------- */
   const narrative: string[] = [...brief.paragraphs];
+  const decideV = vis(decide);
+  const weekV = vis(week);
+  const goodV = vis(good);
   const bits: string[] = [];
-  if (decide.length > 0) bits.push(`${plural(decide.length, "decision")} waiting for you`);
+  if (decideV.length > 0) bits.push(`${plural(decideV.length, "decision")} waiting for you`);
   if (overdue.length > 0) bits.push(`${plural(overdue.length, "tenant")} overdue for ${formatMoney(overdue.reduce((n, p) => n + p.outstanding, 0))}`);
-  if (invoices.length > 0) bits.push(`${plural(invoices.length, "supplier invoice")} due this week`);
+  if (invoices.length > 0) bits.push(`${plural(invoices.length, "invoice")} due this week`);
   const emergencies = openOrders.filter((w) => w.workOrder.priority === "emergency").length;
   if (featureOn("maintenance") && emergencies > 0) bits.push(`${plural(emergencies, "emergency", "emergencies")} still open`);
-  if (week.length > 0) bits.push(`${plural(week.length, "thing")} on the calendar this week`);
+  if (weekV.length > 0) bits.push(`${plural(weekV.length, "thing")} on the calendar this week`);
   if (bits.length > 0) narrative.push(`Today: ${bits.join(", ")}.`);
-  if (good.length > 0) narrative.push(`On the bright side, ${good.map((g) => g.title.charAt(0).toLowerCase() + g.title.slice(1)).join("; ")}.`);
-  narrative.push(`Collected ${formatMoney(cr.collected)} of ${formatMoney(cr.due)} due this month (${formatPercent(cr.rate)}); the next 30 days net out at ${numbers.net30 >= 0 ? "+" : ""}${formatMoney(numbers.net30)} before anything unexpected.`);
+  if (goodV.length > 0) narrative.push(`On the bright side, ${goodV.map((g) => g.title.charAt(0).toLowerCase() + g.title.slice(1)).join("; ")}.`);
+  narrative.push(`Collected ${formatMoney(cr.collected)} of ${formatMoney(cr.due)} due this month (${formatPercent(cr.rate)})${featureOn("cashflow") ? `; the next 30 days net out at ${numbers.net30 >= 0 ? "+" : ""}${formatMoney(numbers.net30)} before anything unexpected.` : "."}`);
 
-  const headline = decide.length > 0 ? `${plural(decide.length, "decision")} to make · ${plural(overdue.length, "tenant")} overdue · ${plural(emergencies, "emergency", "emergencies")} open` : overdue.length > 0 ? `${plural(overdue.length, "tenant")} overdue · ${formatPercent(overview.occupancy.current)} occupied · ${plural(week.length, "item")} this week` : `Quiet day · ${formatPercent(overview.occupancy.current)} occupied · ${plural(week.length, "item")} this week`;
+  const headline = decideV.length > 0 ? `${plural(decideV.length, "decision")} to make · ${plural(overdue.length, "tenant")} overdue${featureOn("maintenance") ? ` · ${plural(emergencies, "emergency", "emergencies")} open` : ""}` : overdue.length > 0 ? `${plural(overdue.length, "tenant")} overdue · ${formatPercent(overview.occupancy.current)} occupied · ${plural(week.length, "item")} this week` : `Quiet day · ${formatPercent(overview.occupancy.current)} occupied · ${plural(week.length, "item")} this week`;
 
   return {
     date: base,
@@ -186,18 +189,18 @@ export function getDailyBriefing(store: Store, base: ISODate = today()): DailyBr
     narrative,
     numbers,
     sections: [
-      { key: "decide", title: "Decide today", description: "Approvals, renewals, settlements and projects that need your call", items: vis(decide) },
-      { key: "money", title: "Money", description: "Overdue rent, rent due today, supplier invoices this week", items: vis(money) },
-      { key: "today", title: "Today & this week", description: "Moves, inspections, services, contract ends and instalments", items: vis(week) },
-      { key: "operations", title: "Operations", description: "What is stuck, broken or sitting empty", items: vis(ops) },
-      { key: "good_news", title: "Good news", description: "What went right recently", items: vis(good) },
+      { key: "decide", title: "Decide today", description: featureOn("maintenance") || featureOn("deposits") || featureOn("renovations") ? "Approvals, renewals, settlements and projects that need your call" : "Renewals that need your call", items: decideV },
+      { key: "money", title: "Money", description: "Overdue rent, rent due today, invoices this week", items: vis(money) },
+      { key: "today", title: "Today & this week", description: [featureOn("inspections") ? "Moves, inspections" : "", featureOn("maintenance") ? "services" : "", "contract ends and instalments"].filter(Boolean).join(", ").replace(/^./, (c) => c.toUpperCase()), items: weekV },
+      { key: "operations", title: "Operations", description: featureOn("maintenance") ? "What is stuck, broken or sitting empty" : "What is broken or sitting empty", items: vis(ops) },
+      { key: "good_news", title: "Good news", description: "What went right recently", items: goodV },
     ],
   };
 }
 
 /** Plain-text version for copy / print / e-mail. */
 /** Items that belong to a section switched off in this edition are left out. */
-const vis = (items: BriefingItem[]): BriefingItem[] => items.filter((i) => briefingItemVisible(i.id));
+const vis = (items: BriefingItem[]): BriefingItem[] => items.filter((i) => briefingItemVisible(i.id)).map((i) => ({ ...i, actions: i.actions.filter((a) => actionVisible(a.kind)) }));
 
 export function briefingAsText(b: DailyBriefing, companyName: string): string {
   const lines: string[] = [`${companyName} — daily briefing, ${formatDate(b.date)}`, b.headline, ""];

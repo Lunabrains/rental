@@ -19,6 +19,7 @@ import { formatDate, formatMoney, labelize } from "@/lib/format";
 import { getAssets, type AssetRow } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { ASSET_STATUSES, ASSET_TYPES, type AssetStatus, type AssetType } from "@/types";
+import { featureOn } from "@/lib/features";
 
 type ServiceChip = "all" | "overdue" | "due_soon" | "scheduled" | "none";
 
@@ -72,7 +73,7 @@ export function AssetsPage() {
     <div className="space-y-5">
       <PageHeader
         title="Assets"
-        description={`${kpis.total} registered · ${formatMoney(kpis.spend)} maintenance spend all time`}
+        description={`${kpis.total} registered · ${formatMoney(kpis.spend)} ${featureOn("maintenance") ? "maintenance spend" : "spend"} all time`}
         actions={
           <>
             <ImportButton section="assets" />
@@ -103,7 +104,7 @@ export function AssetsPage() {
           <PropertySelect value={propertyId} onChange={(id) => setParams({ property: id })} allowAll />
         </div>
       </div>
-      <DataTable rows={rows} columns={columns} rowKey={(r) => r.asset.id} onRowClick={(r) => openAsset(r.asset.id)} rowClassName={(r) => (r.asset.status === "out_of_service" ? "bg-critical-muted/30" : r.serviceState === "overdue" ? "bg-warning-muted/30" : undefined)} searchable={(r) => `${r.asset.name} ${r.asset.assetType} ${r.property.name} ${r.asset.manufacturer ?? ""} ${r.asset.serialNumber ?? ""} ${r.asset.qrCode}`} searchPlaceholder="Name, type, serial, QR…" exportName="assets" pageSize={100} emptyTitle="No assets match" emptyIcon={ClipboardList} />
+      <DataTable rows={rows} columns={columns.filter((c) => !(c.key === "supplier" && !featureOn("suppliers")) && !(c.key === "open" && !featureOn("maintenance")))} rowKey={(r) => r.asset.id} onRowClick={(r) => openAsset(r.asset.id)} rowClassName={(r) => (r.asset.status === "out_of_service" ? "bg-critical-muted/30" : r.serviceState === "overdue" ? "bg-warning-muted/30" : undefined)} searchable={(r) => `${r.asset.name} ${r.asset.assetType} ${r.property.name} ${r.asset.manufacturer ?? ""} ${r.asset.serialNumber ?? ""} ${r.asset.qrCode}`} searchPlaceholder="Name, type, serial, QR…" exportName="assets" pageSize={100} emptyTitle="No assets match" emptyIcon={ClipboardList} />
     </div>
   );
 }

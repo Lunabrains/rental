@@ -121,6 +121,7 @@ const ALERT_FEATURES: Partial<Record<AlertType, FeatureKey>> = {
   move_in_unplanned: "inspections",
   key_lost: "keys",
   renovation_over_budget: "renovations",
+  renovation_delayed: "renovations",
 };
 
 export function alertTypeVisible(type: AlertType): boolean {
@@ -178,22 +179,35 @@ export function briefingItemVisible(id: string): boolean {
 
 /** A question about a section that is switched off gets a friendly "not in this edition". */
 export function hiddenTopicIn(q: string): FeatureKey | null {
-  const table: [RegExp, FeatureKey][] = [
+  // "How much did we spend on maintenance" is an expenses question (visible), not a maintenance one.
+  const spendQuestion = /\b(spend|spent|expenses?|costs?|paid|pay|how much|invoices?|capex)\b/.test(q);
+  const table: [RegExp, FeatureKey, boolean?][] = [
     [/\bbudgets?\b|\bover budget\b/, "budgets"],
     [/\b(security )?deposits?\b/, "deposits"],
-    [/\b(utilit\w*|meters?|readings?|electricity bill|water bill|consumption)\b/, "utilities"],
+    [/\b(utilit\w*|meter readings?|utility readings?|consumption)\b/, "utilities"],
     [/\bcommon charges?\b|\bservice charges?\b/, "charges"],
-    [/\b(cash ?flow|forecast|projection|projected)\b/, "cashflow"],
-    [/\b(work orders?|tickets?|maintenance|repairs?|preventive|services? due|technician visit)\b/, "maintenance"],
+    [/\b(cash ?flow|forecast|projection|projected|expected (income|cash|money)|coming months?)\b/, "cashflow"],
+    [/\b(work orders?|tickets?|preventive|services? (are )?due|technician visits?|jobs?|needs? (a )?service|service (is )?due|keeps? (breaking|failing)|recurring (problems?|issues?)|same problem)\b/, "maintenance"],
+    [/\b(maintenance|repairs?)\b/, "maintenance", true],
     [/\b(suppliers?|contractors?|technicians?|vendors?)\b/, "suppliers"],
-    [/\b(inspections?|move[- ]?(in|out)s?|checklists?)\b/, "inspections"],
-    [/\bkeys?\b/, "keys"],
+    [/\b(inspections?|checklists?|move[- ]?(in|out) (inspection|checklist)s?)\b/, "inspections"],
+    [/\b(lost|spare|issued|apartment|building|mailbox|office|extra) keys?\b|\bkey register\b|\bkeys? (issued|returned|lost|held)\b/, "keys"],
     [/\bparking\b/, "parking"],
-    [/\b(renovations?|capex|projects?)\b/, "renovations"],
+    [/\brenovations?\b/, "renovations"],
     [/\banalytics\b/, "analytics"],
-    [/\b(documents?|paperwork|passports?|id cards?|ids?)\b/, "documents"],
+    [/\b(documents?|paperwork|passports?|id cards?|ids?|identification|missing id|expired ids?)\b/, "documents"],
     [/\breports?\b|\bexport\b/, "reports"],
   ];
-  for (const [re, f] of table) if (re.test(q) && !featureOn(f)) return f;
+  for (const [re, f, skipIfSpend] of table) if (re.test(q) && !(skipIfSpend && spendQuestion) && !featureOn(f)) return f;
   return null;
+}
+
+/* -------------------------------- Timelines ------------------------------ */
+
+const TIMELINE_KIND_FEATURES: Record<string, FeatureKey> = { maintenance: "maintenance", inspection: "inspections", renovation: "renovations", deposit: "deposits", document: "documents" };
+
+/** Timeline events of hidden sections stay out of the building, unit and tenant histories. */
+export function timelineKindVisible(kind: string): boolean {
+  const f = TIMELINE_KIND_FEATURES[kind];
+  return f === undefined || featureOn(f);
 }

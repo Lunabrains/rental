@@ -64,7 +64,7 @@ export function BuildingHeader({ summary, health, lowOccupancyThreshold }: { sum
             <Stat label="Occupancy" value={formatPercent(summary.occupancy)} tone={weak ? "warning" : undefined} />
             <Stat label="Revenue / mo" value={formatMoney(summary.monthlyRevenue)} />
             <Stat label="Outstanding" value={summary.outstanding > 0 ? formatMoney(summary.outstanding) : "—"} tone={summary.outstanding > 0 ? "critical" : undefined} />
-            <Stat label="Health" value={health ? <ScoreBadge score={health.score} label="Building health" components={health.components} caption="Weighted: collections 25 · occupancy 20 · profitability 20 · maintenance 15 · budget 10 · compliance 10." /> : summary.score} />
+            <Stat label="Health" value={health ? <ScoreBadge score={health.score} label="Building health" components={health.components} caption={`Weighted: ${health.components.map((c) => `${c.label.toLowerCase()} ${c.weight}`).join(" · ")}.`} /> : summary.score} />
           </div>
         </div>
       </div>

@@ -118,7 +118,7 @@ export function AssetPage({ assetId }: { assetId: string }) {
       />
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Last service" value={a.lastServiceDate ? formatDate(a.lastServiceDate) : "—"} sublabel={d.plans.length > 0 ? `${d.plans.length} preventive plan${d.plans.length === 1 ? "" : "s"}` : "No preventive plan"} />
+        <KpiCard label="Last service" value={a.lastServiceDate ? formatDate(a.lastServiceDate) : "—"} sublabel={featureOn("maintenance") ? (d.plans.length > 0 ? `${d.plans.length} preventive plan${d.plans.length === 1 ? "" : "s"}` : "No preventive plan") : undefined} />
         <KpiCard label="Next service" value={a.nextServiceDate ? formatDate(a.nextServiceDate) : "—"} sublabel={d.daysToService !== null ? (d.daysToService < 0 ? `${Math.abs(d.daysToService)} days overdue` : `in ${d.daysToService} days`) : "Add a plan to schedule it"} tone={d.serviceState === "overdue" ? "critical" : d.serviceState === "due_soon" ? "warning" : "default"} />
         {featureOn("maintenance") && (
 <KpiCard label="Open work orders" value={openOrders.length} tone={openOrders.some((w) => w.workOrder.priority === "emergency") ? "critical" : openOrders.length > 0 ? "warning" : "success"} sublabel={openOrders[0]?.workOrder.title ?? "Nothing open"} />

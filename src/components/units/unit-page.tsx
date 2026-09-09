@@ -32,7 +32,7 @@ import { formatDate, formatMoney, formatMonth as formatMonthLabel, formatPercent
 import { getUnit360, getUnitProfitability, type InspectionRow, type MeterRow, type ProfitabilityWindow, type TimelineEvent, type Unit360 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
-import { featureOn, type FeatureKey } from "@/lib/features";
+import { featureOn, timelineKindVisible, type FeatureKey } from "@/lib/features";
 
 type Tab = "overview" | "tenancy" | "payments" | "profitability" | "maintenance" | "inspections" | "utilities" | "documents" | "history";
 const ALL_TABS: { key: Tab; label: string; feature?: FeatureKey }[] = [
@@ -99,7 +99,7 @@ export function UnitPage({ unitId }: { unitId: string }) {
           <span className="flex flex-wrap items-center gap-2">
             <span className="tabular">Unit {u.unit.unitNumber}</span>
             <UnitStatusBadge status={u.unit.status} />
-            <ScoreBadge score={u.health.score} label="Unit health" components={u.health.components} caption="Informational — weighted from maintenance cost, repeat issues, condition, vacancy, payments and renovation need." />
+            <ScoreBadge score={u.health.score} label="Unit health" components={u.health.components} caption={`Informational — weighted from ${u.health.components.map((c) => c.label.toLowerCase()).join(", ")}.`} />
           </span>
         }
         description={`${u.property.name} · floor ${u.unit.floor} · ${u.unit.bedrooms} BR · ${u.unit.bathrooms} bath · ${u.unit.sizeSqm} m² · ${u.unit.furnished ? "furnished" : "unfurnished"} · condition ${labelize(u.unit.condition).toLowerCase()}`}
@@ -144,7 +144,7 @@ export function UnitPage({ unitId }: { unitId: string }) {
           tone={daysLeft !== null && daysLeft <= 30 ? "warning" : "default"}
         />
         <KpiCard label="Outstanding" value={u.totals.outstanding > 0 ? formatMoney(u.totals.outstanding) : "—"} sublabel={u.totals.outstanding > 0 ? `${u.payments.filter((p) => p.status === "overdue" || p.status === "partial").length} unpaid` : "Rent is settled"} tone={u.totals.outstanding > 0 ? "critical" : "success"} />
-        <KpiCard label="Security deposit" value={u.deposit ? formatMoney(u.deposit.deposit.amountHeld) : "—"} sublabel={u.deposit ? `${labelize(u.deposit.deposit.status)}${u.deposit.deducted > 0 ? ` · ${formatMoney(u.deposit.deducted)} deducted` : ""}` : "No deposit on record"} tone={u.deposit?.deposit.status === "pending" ? "warning" : "default"} />
+        <KpiCard label="Security deposit" value={u.deposit ? formatMoney(u.deposit.deposit.amountHeld) : "—"} sublabel={u.deposit ? featureOn("deposits") ? `${labelize(u.deposit.deposit.status)}${u.deposit.deducted > 0 ? ` · ${formatMoney(u.deposit.deducted)} deducted` : ""}` : "Held for the contract" : "No deposit on record"} tone={u.deposit?.deposit.status === "pending" ? "warning" : "default"} />
         <KpiCard
           label="Payment reliability"
           value={u.reliability?.score === null || u.reliability === null ? "—" : <ScoreBadge score={u.reliability.score} label="Payment reliability" components={u.reliability.components} scale={1} caption="Internal indicator from this ledger only — not a credit score." size="lg" />}
@@ -292,14 +292,15 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
 
       <div className="space-y-5">
         <SectionCard>
-          <ScoreBreakdown score={u.health.score} label="Unit health" components={u.health.components} caption="Informational — weighted from maintenance cost, repeat issues, condition, vacancy, payments and renovation need." />
+          <ScoreBreakdown score={u.health.score} label="Unit health" components={u.health.components} caption={`Informational — weighted from ${u.health.components.map((c) => c.label.toLowerCase()).join(", ")}.`} />
         </SectionCard>
         {u.reliability && u.reliability.score !== null && (
           <SectionCard>
             <ScoreBreakdown score={u.reliability.score} label={`Payment reliability · ${u.reliability.label}`} components={u.reliability.components} scale={1} caption="Internal indicator computed only from this ledger — not a credit score." />
           </SectionCard>
         )}
-        <SectionCard title="Deposit" description={u.deposit ? labelize(u.deposit.deposit.status) : "No deposit on record"}>
+        {featureOn("deposits") && (
+<SectionCard title="Deposit" description={u.deposit ? labelize(u.deposit.deposit.status) : "No deposit on record"}>
           {u.deposit ? (
             <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
               <Field label="Expected">{formatMoney(u.deposit.deposit.amountExpected)}</Field>
@@ -312,6 +313,7 @@ function Overview({ u, rented, alerts, onTenant }: { u: Unit360; rented: boolean
             <p className="text-sm text-muted-foreground">A deposit record is created with each contract.</p>
           )}
         </SectionCard>
+)}
         {(featureOn("keys") || featureOn("parking")) && (
 <SectionCard title="Keys & parking">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-3">
@@ -355,12 +357,12 @@ function ProfitabilityTab({ unitId }: { unitId: string }) {
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Rent billed" value={formatMoney(p.rentBilled)} sublabel={`${formatMoney(p.rentCollected)} collected`} />
-        <KpiCard label="Costs attributed" value={formatMoney(p.operatingExpenses + p.maintenanceCost)} sublabel={`${formatMoney(p.operatingExpenses)} expenses · ${formatMoney(p.maintenanceCost)} work orders`} />
+        <KpiCard label="Costs attributed" value={formatMoney(p.operatingExpenses + p.maintenanceCost)} sublabel={`${formatMoney(p.operatingExpenses)} expenses · ${formatMoney(p.maintenanceCost)} ${featureOn("maintenance") ? "work orders" : "maintenance"}`} />
         <KpiCard label="Net contribution" value={formatMoney(p.netContribution)} sublabel={`${formatPercent(p.margin)} of rent billed`} tone={p.netContribution < 0 ? "critical" : p.margin < 0.7 ? "warning" : "success"} />
         <KpiCard label="Vacancy loss*" value={p.vacancyLoss > 0 ? formatMoney(p.vacancyLoss) : "—"} sublabel={`${p.vacancyDays} vacant days in the window${p.capex > 0 ? ` · CapEx ${formatMoney(p.capex)} kept separate` : ""}`} tone={p.vacancyLoss > 0 ? "warning" : "default"} />
       </div>
       <div className="grid gap-5 lg:grid-cols-2">
-        <SectionCard title="Breakdown" description="Every figure comes from the ledger, expenses and work orders on this unit">
+        <SectionCard title="Breakdown" description={`Every figure comes from the ledger, expenses${featureOn("maintenance") ? " and work orders" : ""} on this unit`}>
           <ul className="divide-y">
             {p.breakdown.map((b) => (
               <li key={b.label} className="flex items-center justify-between py-2 text-sm">
@@ -531,12 +533,13 @@ export function UtilitiesTab({ meters }: { meters: MeterRow[] }) {
 const HISTORY_LABELS: Record<string, string> = { all: "Everything", contract: "Tenancies", payment: "Payments", maintenance: "Maintenance", inspection: "Inspections", renovation: "Renovations", document: "Documents", activity: "Activity" };
 
 function HistoryTab({ u }: { u: Unit360 }) {
+  const timeline = u.timeline.filter((e) => timelineKindVisible(e.kind));
   const [kind, setKind] = useState("all");
-  const kinds = ["all", ...new Set(u.timeline.map((e) => e.kind))];
-  const shown: TimelineEvent[] = kind === "all" ? u.timeline : u.timeline.filter((e) => e.kind === kind);
+  const kinds = ["all", ...new Set(timeline.map((e) => e.kind))];
+  const shown: TimelineEvent[] = kind === "all" ? timeline : timeline.filter((e) => e.kind === kind);
   return (
-    <SectionCard title="History" description={`${u.timeline.length} events · newest first`}>
-      <Chips value={kind} onChange={setKind} className="mb-4" options={kinds.map((k) => ({ value: k, label: HISTORY_LABELS[k] ?? labelize(k), count: k === "all" ? u.timeline.length : u.timeline.filter((e) => e.kind === k).length }))} />
+    <SectionCard title="History" description={`${timeline.length} events · newest first`}>
+      <Chips value={kind} onChange={setKind} className="mb-4" options={kinds.map((k) => ({ value: k, label: HISTORY_LABELS[k] ?? labelize(k), count: k === "all" ? timeline.length : timeline.filter((e) => e.kind === k).length }))} />
       <Timeline events={shown} limit={80} />
     </SectionCard>
   );

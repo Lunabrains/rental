@@ -21,12 +21,14 @@ export function SearchPage() {
   const { openUnit, openSupplier, openWorkOrder, openAsset, reviewDocument } = useActions();
   const q = params.get("q") ?? "";
   const results = useMemo(() => searchAll(store, q, 20), [store, q]);
+  // Groups of hidden sections are not shown, so they do not count either.
+  const total = results.total - (featureOn("suppliers") ? 0 : results.suppliers.length) - (featureOn("maintenance") ? 0 : results.workOrders.length) - (featureOn("documents") ? 0 : results.documents.length);
 
   return (
     <div className="space-y-6">
-      <PageHeader title={q ? `Results for “${q}”` : "Search"} description={q ? `${results.total} match${results.total === 1 ? "" : "es"} across tenants, units, buildings, contracts, suppliers, work orders, assets and documents` : "Use the search box above to find a tenant, phone number, unit or building."} />
+      <PageHeader title={q ? `Results for “${q}”` : "Search"} description={q ? `${total} match${total === 1 ? "" : "es"} across ${["tenants", "units", "buildings", "contracts", featureOn("suppliers") && "suppliers", featureOn("maintenance") && "work orders", "assets", featureOn("documents") && "documents"].filter(Boolean).join(", ")}` : "Use the search box above to find a tenant, phone number, unit or building."} />
 
-      {!q ? null : results.total === 0 ? (
+      {!q ? null : total === 0 ? (
         <EmptyState icon={Search} title="Nothing found" description="Try a name, part of a phone number, a unit number or a building." />
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">

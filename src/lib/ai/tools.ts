@@ -32,10 +32,10 @@ import {
   getSupplierDetails,
   getCashFlowForecast,
 } from "@/lib/queries";
-import type { AlertCategory, AlertSeverity, ExpenseCategory, ID, Property, Store } from "@/types";
+import type { AlertCategory, AlertSeverity, ExpenseCategory, ID, Property, Store, AlertActionKind } from "@/types";
 
 import type { PageContext, ToolDefinition } from "./types";
-import { featureOn, type FeatureKey } from "@/lib/features";
+import { actionVisible, featureOn, type FeatureKey } from "@/lib/features";
 
 /**
  * The AI's only way into the data: a read-only tool layer over the query
@@ -47,7 +47,7 @@ const optionalProperty = {
   property: { type: "string", description: "Building name, code or id. Defaults to the building the user is looking at, if any." },
 };
 
-const TOOL_FEATURES: Record<string, FeatureKey> = { get_maintenance_summary: "maintenance", get_supplier_performance: "suppliers", get_cash_flow_forecast: "cashflow" };
+const TOOL_FEATURES: Record<string, FeatureKey> = { get_maintenance_summary: "maintenance", get_assets_due: "maintenance", get_supplier_performance: "suppliers", get_cash_flow_forecast: "cashflow" };
 
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
@@ -67,7 +67,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
   {
     name: "get_unit",
-    description: "Who rents a unit and on what terms: tenant, contract, payment history summary, documents. Use for 'who is in 403?'.",
+    description: `Who rents a unit and on what terms: tenant, contract, payment history summary${featureOn("documents") ? ", documents" : ""}. Use for 'who is in 403?'.`,
     input_schema: {
       type: "object",
       properties: { ...optionalProperty, unit_number: { type: "string", description: "Unit number, e.g. 403 or B304" } },
@@ -253,7 +253,14 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
 
 /** Tools for this edition — sections that are switched off are not offered to the model. */
 export function availableTools(): ToolDefinition[] {
-  return TOOL_DEFINITIONS.filter((t) => !TOOL_FEATURES[t.name] || featureOn(TOOL_FEATURES[t.name]));
+  return TOOL_DEFINITIONS.filter((t) => !TOOL_FEATURES[t.name] || featureOn(TOOL_FEATURES[t.name])).map((t) => {
+    if (t.name !== "answer") return t;
+    // The answer tool may only propose buttons that lead somewhere in this edition.
+    const props = t.input_schema.properties as Record<string, unknown>;
+    const actions = props.actions as { items: { properties: { kind: { enum: string[] } } } };
+    const kind = { ...actions.items.properties.kind, enum: actions.items.properties.kind.enum.filter((k) => actionVisible(k as AlertActionKind)) };
+    return { ...t, input_schema: { ...t.input_schema, properties: { ...props, actions: { ...actions, items: { ...actions.items, properties: { ...actions.items.properties, kind } } } } } };
+  });
 }
 
 /* ------------------------------ Resolution ------------------------------- */

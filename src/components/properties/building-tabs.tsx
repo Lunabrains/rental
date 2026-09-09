@@ -43,6 +43,7 @@ import {
 } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import type { StoredDocument } from "@/types";
+import { featureOn, timelineKindVisible } from "@/lib/features";
 
 /* -------------------------------- Overview -------------------------------- */
 
@@ -61,8 +62,12 @@ export function BuildingOverview({ summary }: { summary: PropertySummary }) {
         <KpiCard label="Outstanding rent" value={o.outstanding > 0 ? formatMoney(o.outstanding) : "—"} sublabel={o.overdueCount > 0 ? `${o.overdueCount} unpaid payment${o.overdueCount === 1 ? "" : "s"}` : "Nothing overdue"} tone={o.outstanding > 0 ? "critical" : "success"} />
         <KpiCard label="Expenses this month" value={formatMoney(o.thisMonth.operatingExpenses)} sublabel={`${formatMoney(o.lastMonth.operatingExpenses)} last month${o.thisMonth.capex > 0 ? ` · CapEx ${formatMoney(o.thisMonth.capex)}` : ""}`} />
         <KpiCard label="NOI this month" value={formatMoney(o.thisMonth.noi)} sublabel={`${formatPercent(o.thisMonth.margin)} margin · ${formatMoney(o.lastMonth.noi)} last month`} tone={o.thisMonth.noi < o.lastMonth.noi * 0.8 ? "warning" : "default"} />
-        <KpiCard label="Open maintenance" value={o.openWorkOrders.length} sublabel={o.emergencies > 0 ? `${o.emergencies} emergency · ${o.awaitingApproval} awaiting approval` : o.awaitingApproval > 0 ? `${o.awaitingApproval} awaiting approval` : "No emergencies"} tone={o.emergencies > 0 ? "critical" : o.openWorkOrders.length > 0 ? "warning" : "success"} />
-        <KpiCard label="Services due" value={o.upcomingServices.length} sublabel={o.upcomingServices.some((p) => p.state === "overdue") ? `${o.upcomingServices.filter((p) => p.state === "overdue").length} overdue` : "Preventive maintenance"} tone={o.upcomingServices.some((p) => p.state === "overdue") ? "critical" : o.upcomingServices.length > 0 ? "warning" : "success"} />
+        {featureOn("maintenance") && (
+<KpiCard label="Open maintenance" value={o.openWorkOrders.length} sublabel={o.emergencies > 0 ? `${o.emergencies} emergency · ${o.awaitingApproval} awaiting approval` : o.awaitingApproval > 0 ? `${o.awaitingApproval} awaiting approval` : "No emergencies"} tone={o.emergencies > 0 ? "critical" : o.openWorkOrders.length > 0 ? "warning" : "success"} />
+)}
+        {featureOn("maintenance") && (
+<KpiCard label="Services due" value={o.upcomingServices.length} sublabel={o.upcomingServices.some((p) => p.state === "overdue") ? `${o.upcomingServices.filter((p) => p.state === "overdue").length} overdue` : "Preventive maintenance"} tone={o.upcomingServices.some((p) => p.state === "overdue") ? "critical" : o.upcomingServices.length > 0 ? "warning" : "success"} />
+)}
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
@@ -106,7 +111,8 @@ export function BuildingOverview({ summary }: { summary: PropertySummary }) {
             )}
           </SectionCard>
 
-          <SectionCard title="Upcoming & overdue services" description="Preventive maintenance">
+          {featureOn("maintenance") && (
+<SectionCard title="Upcoming & overdue services" description="Preventive maintenance">
             {o.upcomingServices.length === 0 ? (
               <EmptyState compact icon={Wrench} title="Nothing due in the next 30 days" />
             ) : (
@@ -128,6 +134,7 @@ export function BuildingOverview({ summary }: { summary: PropertySummary }) {
               </ul>
             )}
           </SectionCard>
+)}
         </div>
 
         <div className="space-y-5">
@@ -170,7 +177,7 @@ export function BuildingOverview({ summary }: { summary: PropertySummary }) {
             </dl>
           </SectionCard>
 
-          {o.liveRenovations.length > 0 && (
+          {featureOn("renovations") && o.liveRenovations.length > 0 && (
             <SectionCard title="Renovations in progress">
               <ul className="space-y-3">
                 {o.liveRenovations.map((r) => (
@@ -323,11 +330,13 @@ export function BuildingFinancials({ propertyId }: { propertyId: string }) {
       )}
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <SectionCard title="Budget vs actual" description="Current month and year lines" flush>
+        {featureOn("budgets") && (
+<SectionCard title="Budget vs actual" description="Current month and year lines" flush>
           <div className="p-3">
             <DataTable rows={fin.budgets} columns={budgetColumns} rowKey={(r) => r.budget.id} dense emptyTitle="No budget lines yet" emptyDescription="Budgets are set per building and category on the Finance › Budgets page." defaultSort={{ key: "variance", dir: "desc" }} />
           </div>
         </SectionCard>
+)}
         <SectionCard title="Operating spend by category" description="Trailing 12 months">
           {fin.byCategory.length === 0 ? (
             <EmptyState compact title="No expenses recorded" />
@@ -432,7 +441,7 @@ export function BuildingMaintenance({ propertyId }: { propertyId: string }) {
 
 /* --------------------------------- Assets --------------------------------- */
 
-const assetColumns: Column<AssetRow>[] = [
+const ALL_assetColumns: Column<AssetRow>[] = [
   { key: "name", header: "Asset", cell: (r) => <span className="font-medium">{r.asset.name}</span> },
   { key: "type", header: "Type", cell: (r) => labelize(r.asset.assetType) },
   { key: "status", header: "Status", cell: (r) => <StatusBadge value={r.asset.status} dot /> },
@@ -443,6 +452,7 @@ const assetColumns: Column<AssetRow>[] = [
   { key: "open", header: "Open WOs", align: "right", cell: (r) => (r.openOrders > 0 ? <span className="font-medium text-warning-foreground">{r.openOrders}</span> : "0"), value: (r) => r.openOrders },
   { key: "spend", header: "Total spend", align: "right", cell: (r) => (r.totalSpend > 0 ? formatMoney(r.totalSpend) : "—"), value: (r) => r.totalSpend },
 ];
+const assetColumns = ALL_assetColumns.filter((c) => !(c.key === "supplier" && !featureOn("suppliers")) && !(c.key === "open" && !featureOn("maintenance")));
 
 export function BuildingAssets({ propertyId }: { propertyId: string }) {
   const store = useStore();
@@ -506,7 +516,7 @@ const KIND_LABELS: Record<string, string> = { all: "Everything", contract: "Tena
 
 export function BuildingTimeline({ propertyId }: { propertyId: string }) {
   const store = useStore();
-  const events = useMemo(() => getPropertyTimeline(store, propertyId, 200), [store, propertyId]);
+  const events = useMemo(() => getPropertyTimeline(store, propertyId, 200).filter((e) => timelineKindVisible(e.kind)), [store, propertyId]);
   const [kind, setKind] = useState<string>("all");
   const kinds = useMemo(() => ["all", ...new Set(events.map((e) => e.kind))], [events]);
   const shown: TimelineEvent[] = kind === "all" ? events : events.filter((e) => e.kind === kind);

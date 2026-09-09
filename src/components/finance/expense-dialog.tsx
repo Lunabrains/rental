@@ -15,6 +15,7 @@ import { useStoreContext } from "@/lib/data/store-context";
 import { addDaysISO, today } from "@/lib/date";
 import { formatMoney } from "@/lib/format";
 import { EXPENSE_CATEGORIES, EXPENSE_PAYMENT_STATUSES, RECURRENCES, type ExpenseCategory, type ExpenseClassification, type ExpensePaymentStatus, type Recurrence } from "@/types";
+import { featureOn } from "@/lib/features";
 
 export interface ExpensePrefill {
   propertyId?: string | null;
@@ -96,7 +97,7 @@ export function ExpenseDialog({ expenseId, prefill, onClose }: { expenseId?: str
       open
       onOpenChange={(o) => !o && onClose()}
       title={expenseId ? "Edit expense" : "Add expense"}
-      description={expenseId ? base?.description : "Operating costs feed NOI and budgets; CapEx is tracked separately."}
+      description={expenseId ? base?.description : `Operating costs feed NOI${featureOn("budgets") ? " and budgets" : ""}; CapEx is tracked separately.`}
       wide
       footer={
         <>
@@ -128,9 +129,11 @@ export function ExpenseDialog({ expenseId, prefill, onClose }: { expenseId?: str
         <Field label="Amount" htmlFor="ex-amount">
           <MoneyInput id="ex-amount" value={amount} onChange={setAmount} />
         </Field>
-        <Field label="Supplier" htmlFor="ex-supplier">
+        {featureOn("suppliers") && (
+<Field label="Supplier" htmlFor="ex-supplier">
           <SupplierSelect id="ex-supplier" value={supplierId} onChange={setSupplierId} allowNone />
         </Field>
+)}
         <Field label="Expense date" htmlFor="ex-date">
           <Input id="ex-date" type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
         </Field>

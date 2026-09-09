@@ -24,6 +24,7 @@ import { formatDate, formatMoney, formatMonth, formatPercent, labelize } from "@
 import { getExpenseTrend, getExpenses, summarizeExpenses, type ExpenseRow } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 import { EXPENSE_CATEGORIES, type ExpenseCategory, type ExpenseClassification, type ExpensePaymentStatus, type StoredDocument } from "@/types";
+import { featureOn } from "@/lib/features";
 
 type Range = "month" | "last_month" | "quarter" | "year" | "all";
 type StatusChip = "all" | ExpensePaymentStatus | "deleted";
@@ -222,7 +223,8 @@ export function ExpensesPage() {
               </ul>
             )}
           </SectionCard>
-          <SectionCard title="By supplier" description={r.label}>
+          {featureOn("suppliers") && (
+<SectionCard title="By supplier" description={r.label}>
             {summary.bySupplier.length === 0 ? (
               <p className="text-sm text-muted-foreground">No supplier-linked expenses.</p>
             ) : (
@@ -236,6 +238,7 @@ export function ExpensesPage() {
               </ul>
             )}
           </SectionCard>
+)}
         </div>
       </div>
       <DocumentPreview doc={preview} onClose={() => setPreview(null)} />

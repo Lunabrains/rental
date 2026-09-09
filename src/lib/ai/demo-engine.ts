@@ -26,7 +26,7 @@ import { answerV2 } from "./answers-v2";
 import { entryIntent } from "./entry-intents";
 import { answerScripted, localizeActionLabel, matchScripted, suggestedQuestions } from "./scripted";
 import type { AnswerAction, AssistantAnswer, PageContext } from "./types";
-import { hiddenTopicIn } from "@/lib/features";
+import { featureOn, hiddenTopicIn } from "@/lib/features";
 
 /**
  * The demo brain: a rule-based intent router over the query layer. It
@@ -292,7 +292,7 @@ function tenantAnswer(store: Store, tenant: Tenant, lang: Lang): AssistantAnswer
           [s.fields.contract, cur ? s.contractValue(s.date(cur.contract.startDate), s.date(cur.contract.endDate), cur.daysRemaining) : s.dash],
           [s.fields.payments, s.paymentsValue(formatMoney(d.totals.paid), d.totals.lateCount, formatPercent(d.totals.onTimeRate))],
           [s.fields.outstanding, d.totals.outstanding > 0 ? formatMoney(d.totals.outstanding) : s.none],
-          [s.fields.documents, d.documents.length > 0 ? d.documents.map((x) => x.title).join(lang === "ar" ? "، " : ", ") : s.noneOnFile],
+          ...(featureOn("documents") ? [[s.fields.documents, d.documents.length > 0 ? d.documents.map((x) => x.title).join(lang === "ar" ? "، " : ", ") : s.noneOnFile] as [string, string]] : []),
           [s.fields.withUs, s.withUsValue(d.tenureMonths, d.contracts.length)],
         ],
       },
@@ -562,7 +562,7 @@ export function answerLocally(question: string, store: Store, context: PageConte
   if (v2) return v2;
 
   // Paperwork beats leases: "expired ID" is about documents, not contracts.
-  if (/\b(documents?|identification|ids?|id cards?|passports?|paperwork|missing id|expir\w* (ids?|passports?|documents?))\b/.test(q)) {
+  if (featureOn("documents") && /\b(documents?|identification|ids?|id cards?|passports?|paperwork|missing id|expir\w* (ids?|passports?|documents?))\b/.test(q)) {
     return alertsAnswer(store, e.property, undefined, "document", "document", lang);
   }
 

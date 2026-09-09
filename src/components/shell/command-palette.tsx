@@ -72,7 +72,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
         <DialogTitle className="sr-only">Search and commands</DialogTitle>
         <DialogDescription className="sr-only">Find anything in the portfolio or start an action.</DialogDescription>
         <Command shouldFilter={!results} className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted-foreground">
-          <CommandInput value={query} onValueChange={setQuery} placeholder="Search tenants, units, buildings, suppliers, work orders, assets, documents… or type an action" />
+          <CommandInput value={query} onValueChange={setQuery} placeholder={`Search ${["tenants", "units", "buildings", featureOn("suppliers") && "suppliers", featureOn("maintenance") && "work orders", "assets", featureOn("documents") && "documents"].filter(Boolean).join(", ")}… or type an action`} />
           <CommandList className="max-h-[60vh]">
             <CommandEmpty>Nothing found. Press Enter to search the whole portfolio.</CommandEmpty>
             {results && results.total > 0 && (
@@ -215,7 +215,7 @@ export function CommandPalette({ open, onOpenChange }: { open: boolean; onOpenCh
           </CommandList>
         </Command>
         <div className="flex items-center justify-between border-t px-3 py-1.5 text-[11px] text-muted-foreground">
-          <span>{store.tenants.length} tenants · {store.units.length} units · {store.suppliers.length} suppliers · {store.documents.filter((d) => !d.deleted).length} documents</span>
+          <span>{store.tenants.length} tenants · {store.units.length} units{featureOn("suppliers") ? ` · ${store.suppliers.length} suppliers` : ""}{featureOn("documents") ? ` · ${store.documents.filter((d) => !d.deleted).length} documents` : ""}</span>
           <span>{formatMoney(store.payments.filter((p) => p.status === "overdue" || p.status === "partial").reduce((n, p) => n + p.amountDue - p.amountPaid, 0))} outstanding</span>
         </div>
       </DialogContent>

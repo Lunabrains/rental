@@ -6,6 +6,7 @@ import { detectLang, strings, type Lang } from "./i18n";
 import { buildSystemPrompt } from "./system-prompt";
 import { availableTools, executeTool, knownActionTarget } from "./tools";
 import type { AiRequest, AiResponse, AnswerAction, ApiMessage, AssistantAnswer, ChatTurn, ContentBlock, PageContext, ToolUseBlock } from "./types";
+import { actionVisible } from "@/lib/features";
 
 const MAX_ROUNDS = 6;
 
@@ -123,7 +124,7 @@ function sanitizeAnswer(input: Record<string, unknown>, store: Store, lang: Lang
   const cards = Array.isArray(input.cards) ? (input.cards as AssistantAnswer["cards"]) : undefined;
   const recommendation = typeof input.recommendation === "string" ? input.recommendation : undefined;
   const actions = Array.isArray(input.actions)
-    ? (input.actions as AnswerAction[]).filter((a) => a && typeof a.kind === "string" && typeof a.targetId === "string" && knownActionTarget(store, a.kind, a.targetId)).slice(0, 4)
+    ? (input.actions as AnswerAction[]).filter((a) => a && typeof a.kind === "string" && typeof a.targetId === "string" && actionVisible(a.kind) && knownActionTarget(store, a.kind, a.targetId)).slice(0, 4)
     : undefined;
   return { text, table, cards, recommendation, actions, source: "model", lang: detectLang(text) === "ar" ? "ar" : lang };
 }

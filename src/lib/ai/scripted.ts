@@ -8,6 +8,7 @@ import type { Store } from "@/types";
 import { findProperty, findUnits, normalizeQuestion } from "./entities";
 import { localizeAlert, strings, type Lang } from "./i18n";
 import type { AnswerAction, AssistantAnswer, PageContext } from "./types";
+import { featureOn } from "@/lib/features";
 
 /**
  * The six rehearsed questions answer instantly and exactly from the query
@@ -231,7 +232,7 @@ export function answerScripted(id: ScriptedId, question: string, store: Store, c
               [s.fields.contract, s.contractValue(s.date(d.contract.startDate), s.date(d.contract.endDate), days)],
               [s.fields.payments, s.paymentsValue(formatMoney(d.totals.paid), d.totals.lateCount, formatPercent(d.totals.onTimeRate))],
               [s.fields.outstanding, d.totals.outstanding > 0 ? formatMoney(d.totals.outstanding) : s.none],
-              [s.fields.documents, d.documents.length > 0 ? d.documents.map((x) => x.title).join(lang === "ar" ? "، " : ", ") : s.noneOnFile],
+              ...(featureOn("documents") ? [[s.fields.documents, d.documents.length > 0 ? d.documents.map((x) => x.title).join(lang === "ar" ? "، " : ", ") : s.noneOnFile] as [string, string]] : []),
             ],
           },
         ],

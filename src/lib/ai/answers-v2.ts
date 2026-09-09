@@ -9,6 +9,7 @@ import { EXPENSE_CATEGORIES, WORK_ORDER_CATEGORIES, type ExpenseCategory, type P
 
 import { strings, type Lang } from "./i18n";
 import type { AnswerAction, AssistantAnswer, PageContext } from "./types";
+import { featureOn } from "@/lib/features";
 
 export interface RouterEntities {
   property: Property | null;
@@ -182,7 +183,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* Unit with the highest maintenance cost */
-  if (/\b(unit|apartment|flat)s?\b/.test(q) && /\b(cost|expensive|maintenance|repairs?)\b/.test(q) && /\b(most|highest|top|biggest)\b/.test(q)) {
+  if (featureOn("maintenance") && /\b(unit|apartment|flat)s?\b/.test(q) && /\b(cost|expensive|maintenance|repairs?)\b/.test(q) && /\b(most|highest|top|biggest)\b/.test(q)) {
     const from = `${Number(base.slice(0, 4)) - 1}${base.slice(4)}`;
     const spend = new Map<string, { cost: number; jobs: number }>();
     const bump = (unitId: string, cost: number, job: boolean) => {
@@ -233,7 +234,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* Cash flow */
-  if (/\b(cash ?flow|forecast|projection|projected|expected (income|cash|money)|coming months?)\b/.test(q) && !/\b(contract|lease|expir)/.test(q)) {
+  if (featureOn("cashflow") && /\b(cash ?flow|forecast|projection|projected|expected (income|cash|money)|coming months?)\b/.test(q) && !/\b(contract|lease|expir)/.test(q)) {
     const days = e.days ?? (/\bmonths?\b/.test(q) && e.days === null ? 90 : 90);
     const months = Math.max(1, Math.min(12, Math.ceil(days / 30)));
     const f = getCashFlowForecast(store, { months, propertyId: scopeId }, base);
@@ -241,7 +242,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* Overdue maintenance */
-  if (/\b(maintenance|work orders?|jobs?|repairs?|tickets?)\b/.test(q) && /\b(overdue|late|stuck|too long|old|open|outstanding|pending|backlog)\b/.test(q)) {
+  if (featureOn("maintenance") && /\b(maintenance|work orders?|jobs?|repairs?|tickets?)\b/.test(q) && /\b(overdue|late|stuck|too long|old|open|outstanding|pending|backlog)\b/.test(q)) {
     const allOpen = /\b(open|outstanding|pending|backlog)\b/.test(q) && !/\b(overdue|late|stuck|too long)\b/.test(q);
     const rows = getWorkOrders(store, { propertyId: scopeId, status: "open" }, base).filter((r) => allOpen || r.overdue).sort((a, b) => b.ageDays - a.ageDays);
     if (rows.length === 0) return local({ text: allOpen ? v.maintenanceOpenNone(scopeLabel) : v.maintenanceOverdueNone(scopeLabel) });
@@ -249,7 +250,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* Repeat issues */
-  if (/\b(recurr\w*|repeat\w*|again and again|keeps? (breaking|failing|happening|coming back)|chronic|same problem)\b/.test(q) && /\b(unit|apartment|problem|issue|plumb|electric|hvac|elevator|generator|leak)/.test(q) && !/\b(supplier|contractor|technician|vendor)s?\b/.test(q)) {
+  if (featureOn("maintenance") && /\b(recurr\w*|repeat\w*|again and again|keeps? (breaking|failing|happening|coming back)|chronic|same problem)\b/.test(q) && /\b(unit|apartment|problem|issue|plumb|electric|hvac|elevator|generator|leak)/.test(q) && !/\b(supplier|contractor|technician|vendor)s?\b/.test(q)) {
     const windowDays = store.settings.thresholds.repeatIssueWindowDays;
     const category = workCategoryIn(q);
     const groups = new Map<string, { unit: string; property: string; unitId: string; category: string; count: number }>();
@@ -267,7 +268,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* Assets needing service */
-  if (/\b(assets?|equipment|service\w*|preventive|maintenance plan)\b/.test(q) && /\b(due|need\w*|schedul\w*|overdue|this month|soon|upcoming)\b/.test(q)) {
+  if (featureOn("maintenance") && /\b(assets?|equipment|service\w*|preventive|maintenance plan)\b/.test(q) && /\b(due|need\w*|schedul\w*|overdue|this month|soon|upcoming)\b/.test(q)) {
     const days = e.days ?? 30;
     const rows = getPreventivePlans(store, { propertyId: scopeId }, base).filter((r) => r.state !== "paused" && r.daysUntil <= days).sort((a, b) => a.daysUntil - b.daysUntil);
     if (rows.length === 0) return local({ text: v.assetsDueNone(days) });
@@ -277,7 +278,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
 
   /* Supplier spend */
   const supplier = supplierIn(store, q);
-  if (/\b(supplier|contractor|technician|vendor|paid|pay|spend|spent)\b/.test(q) && supplier && /\b(paid|pay|spend|spent|cost|how much|invoices?)\b/.test(q)) {
+  if (featureOn("suppliers") && /\b(supplier|contractor|technician|vendor|paid|pay|spend|spent)\b/.test(q) && supplier && /\b(paid|pay|spend|spent|cost|how much|invoices?)\b/.test(q)) {
     const { year, label } = yearIn(q, base);
     const rows = getExpenses(store, { supplierId: supplier.id, period: year }, base);
     const total = rows.reduce((n, r) => n + r.expense.amount, 0);
@@ -295,7 +296,7 @@ export function answerV2(q: string, store: Store, context: PageContext, e: Route
   }
 
   /* A supplier named on its own: their card */
-  if (supplier && /\b(supplier|contractor|technician|about|who is|tell me)\b/.test(q)) {
+  if (featureOn("suppliers") && supplier && /\b(supplier|contractor|technician|about|who is|tell me)\b/.test(q)) {
     const row = getSuppliers(store).find((r) => r.supplier.id === supplier.id);
     if (row) return local({ text: `${supplier.name} · ${labelize(supplier.category)} · ${row.completedJobs} ${v.cols.jobs.toLowerCase()} · ${s.money(row.totalSpend)}`, cards: [{ title: supplier.name, subtitle: labelize(supplier.category), fields: [[v.cols.score, row.score !== null ? `${row.score}/100 · ${row.scoreLabel}` : s.dash], [v.cols.repeat, row.repeatIssueRate !== null ? s.pct(row.repeatIssueRate) : s.dash], [v.cols.jobs, `${row.completedJobs} / ${row.jobs}`], [v.cols.spend, s.money(row.totalSpend)]] }], actions: [act("view_supplier", s.openName(supplier.name), supplier.id)] });
   }
